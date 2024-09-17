@@ -34,6 +34,7 @@
           (error "%s" (with-current-buffer buffer (buffer-string))))
       ((error) (warn "%s" err) (delete-directory repo 'recursive))))
   (unless (require 'elpaca-autoloads nil t)
+    
     (require 'elpaca)
     (elpaca-generate-autoloads "elpaca" repo)
     (load "./elpaca-autoloads")))
@@ -144,13 +145,14 @@
   (meow-setup) 
   (meow-global-mode 1))
 
-;;; TODO Fix Magit (w compat?)
-;; compat
-;(use-package compat :ensure t :demand t)
-
 ;; Magit
-;(use-package magit :ensure t :demand t
-  ;:after (compat))
+(use-package magit
+  :ensure t
+  :demand t)
+
+;; Transient - Needed as a Workaround for Magit
+(use-package transient :ensure t :demand t)
+
 
 ;;; NOTE: the next few packages are from here: 
 ;;; https://lambdaland.org/posts/2024-05-30_top_emacs_packages/
@@ -177,7 +179,6 @@
   (marginalia-mode))
 
 ; Consult
-
 (use-package consult
   :ensure t
   :demand t)
@@ -185,41 +186,36 @@
 ; Embark
 (use-package embark
   :ensure t
-
   :bind
-  (("C-." . embark-act)         ;; pick some comfortable binding
-   ("C-;" . embark-dwim)        ;; good alternative: M-.
-   ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
-
+      (("C-." . embark-act)         ;; pick some comfortable binding
+       ("C-;" . embark-dwim)        ;; good alternative: M-.
+       ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
   :init
-  ;; Optionally replace the key help with a completing-read interface
-  (setq prefix-help-command #'embark-prefix-help-command)
+      ;; Optionally replace the key help with a completing-read interface
+      (setq prefix-help-command #'embark-prefix-help-command)
 
-  ;; Show the Embark target at point via Eldoc. You may adjust the
-  ;; Eldoc strategy, if you want to see the documentation from
-  ;; multiple providers. Beware that using this can be a little
-  ;; jarring since the message shown in the minibuffer can be more
-  ;; than one line, causing the modeline to move up and down:
+      ;; Show the Embark target at point via Eldoc. You may adjust the
+      ;; Eldoc strategy, if you want to see the documentation from
+      ;; multiple providers. Beware that using this can be a little
+      ;; jarring since the message shown in the minibuffer can be more
+      ;; than one line, causing the modeline to move up and down:
 
-  ;; (add-hook 'eldoc-documentation-functions #'embark-eldoc-first-target)
-  ;; (setq eldoc-documentation-strategy #'eldoc-documentation-compose-eagerly)
+      ;; (add-hook 'eldoc-documentation-functions #'embark-eldoc-first-target)
+      ;; (setq eldoc-documentation-strategy #'eldoc-documentation-compose-eagerly)
 
   :config
-  ;; Hide the mode line of the Embark live/completions buffers
-  (add-to-list 'display-buffer-alist
-               '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
-                 nil
-                 (window-parameters (mode-line-format . none)))))
+      ;; Hide the mode line of the Embark live/completions buffers
+      (add-to-list 'display-buffer-alist
+		   '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
+		     nil
+		     (window-parameters (mode-line-format . none)))))
 
-
-
-;; Consult users will also want the embark-consult package.
+;; Embark Integration for Consult
 (use-package embark-consult
   :ensure t ; only need to install it, embark loads it after consult if found
   :demand t
   :hook
   (embark-collect-mode . consult-preview-at-point-mode))
-
 
 ;; Vertico
 (use-package vertico
@@ -275,9 +271,46 @@
   (popper-mode +1)
   (popper-echo-mode +1)) ; For echo area hints
 
+(use-package simpleclip
+  :ensure t
+  :demand t
+  :config (simpleclip-mode t))
+
 ;; Jinx
 
 ;; Eat
+
+;; LSP support
+
+(use-package lsp-mode
+  :ensure t
+  :hook
+  ((clojure-mode . lsp)
+     (clojurec-mode . lsp)
+     (clojurescript-mode . lsp))
+  :custom
+  (lsp-completion-provider :none)
+  :init
+  (defun my/lsp-mode-setup-completion () ; from the Corfu Wiki
+    (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
+          '(orderless))) ;; Configure orderless
+  :config
+  ;; add paths to your local installation of project mgmt tools, like lein
+  (setenv "PATH" (concat
+                   "/usr/local/bin" path-separator
+                   (getenv "PATH")))
+  (dolist (m '(clojure-mode
+               clojurec-mode
+               clojurescript-mode
+               clojurex-mode))
+     (add-to-list 'lsp-language-id-configuration `(,m . "clojure")))
+     ;; (setq lsp-clojure-server-command '("/usr/local/bin/clojure-lsp"));; Optional: In case `clojure-lsp` is not in your $PATH
+  :hook
+  (lsp-completion-mode . my/lsp-mode-setup-completion)) 
+
+(use-package lsp-ui
+  :ensure t
+  :commands lsp-ui-mode)
 
 ;;;; Clojure
 
@@ -286,7 +319,7 @@
   :ensure t
   :demand t)
 
-;;;; Theming
+;;;; Theme & Font
 
 (use-package modus-themes
   :ensure t
@@ -386,25 +419,25 @@
     (fontaine-presets
           '((small
              :default-family "Iosevka Comfy Motion"
-             :default-height 100
+             :default-height 140
              :variable-pitch-family "Iosevka Comfy Duo")
             (regular) ; like this it uses all the fallback values and is named `regular'
             (medium
              :default-weight semilight
-             :default-height 130
+             :default-height 160
              :bold-weight extrabold)
             (large
              :inherit medium
-             :default-height 160)
+             :default-height 180)
             (presentation
-             :default-height 200)
+             :default-height 220)
             (t
              ;; I keep all properties for didactic purposes, but most can be
              ;; omitted.  See the fontaine manual for the technicalities:
              ;; <https://protesilaos.com/emacs/fontaine>.
              :default-family "Iosevka Comfy"
              :default-weight regular
-             :default-height 100
+             :default-height 150
 
              :fixed-pitch-family nil ; falls back to :default-family
              :fixed-pitch-weight nil ; falls back to :default-weight
@@ -449,27 +482,37 @@
              :italic-slant italic
 
              :line-spacing nil)))
+    :config
+        ;; Set the last preset or fall back to desired style from `fontaine-presets'
+        ;; (the `regular' in this case).
+        (fontaine-set-preset (or (fontaine-restore-latest-preset) 'regular))
+        
+        ;; Persist the latest font preset when closing/starting Emacs and
+        ;; while switching between themes.
+        (fontaine-mode 1)
+        
+        ;; fontaine does not define any key bindings.  This is just a sample that
+        ;; respects the key binding conventions.  Evaluate:
+            ;;
+        ;;     (info "(elisp) Key Binding Conventions")
+        (define-key global-map (kbd "C-c f") #'fontaine-set-preset))
 
-    ;; Set the last preset or fall back to desired style from `fontaine-presets'
-    ;; (the `regular' in this case).
-    (fontaine-set-preset (or (fontaine-restore-latest-preset) 'regular))
+;;;; Keybinds Philosophy (via reddit)
+; Use Hyper as a namespace for your personal bindings per mode.
+; Use Alt as a namespace for you personal bindings that are global.
+; Do not customize a single binding in any other namespace.
+; Your Emacs life will be so simple after that.
+; You will use this approach for the rest of your life.
 
-    ;; Persist the latest font preset when closing/starting Emacs and
-    ;; while switching between themes.
-    (fontaine-mode 1)
-
-    ;; fontaine does not define any key bindings.  This is just a sample that
-    ;; respects the key binding conventions.  Evaluate:
-    ;;
-    ;;     (info "(elisp) Key Binding Conventions")
-    (define-key global-map (kbd "C-c f") #'fontaine-set-preset))
+;; TODO: Bind Hyper to a key for use with meow-keypad
+;; Bind useful functions within Hyper and Alt
 
 ;;;; Emacs Config
 (use-package emacs
   :ensure nil
   :demand t
   :config
-    (setq scroll-step 0)
+    (setq scroll-margin 5)
     (setq scroll-conservatively 101)
   :custom
     ;;;; Theming
@@ -481,7 +524,7 @@
     (tool-bar-mode nil)
     (scroll-bar-mode nil)
     (frame-resize-pixelwise t)
-
+ 
     ;;;; Vertico
     ;; Support opening new minibuffers from inside existing minibuffers.
     (enable-recursive-minibuffers t)
@@ -521,3 +564,5 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  )
+
+ 

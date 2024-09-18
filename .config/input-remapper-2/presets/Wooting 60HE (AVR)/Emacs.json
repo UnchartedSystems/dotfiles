@@ -1,0 +1,14 @@
+[
+    {
+        "input_combination": [
+            {
+                "type": 1,
+                "code": 126,
+                "origin_hash": "9dcbc04d59adb21d6bf2ecfda514d643"
+            }
+        ],
+        "target_uinput": "keyboard",
+        "output_symbol": "modify(KEY_RIGHTCTRL, key(x)).wait(5).\nmodify(KEY_RIGHTSHIFT, key(2)).wait(5).",
+        "mapping_type": "key_macro"
+    }
+]

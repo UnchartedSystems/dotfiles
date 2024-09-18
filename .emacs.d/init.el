@@ -153,7 +153,6 @@
 ;; Transient - Needed as a Workaround for Magit
 (use-package transient :ensure t :demand t)
 
-
 ;;; NOTE: the next few packages are from here: 
 ;;; https://lambdaland.org/posts/2024-05-30_top_emacs_packages/
 
@@ -250,9 +249,42 @@
 (use-package corfu
   :ensure t
   :demand t
+  :custom
+  ;; Autocompletion
+  (corfu-auto nil)
+  ;; Eager Quitting
+  (corfu-quit-no-match 'seperator)
+  ;; Enable cycling for `corfu-next/previous'
+  (corfu-cycle t)
+  ;; Always preselect the prompt
+  (corfu-preselect 'prompt)
+  :config
+  (defun corfu-move-to-minibuffer ()
+    (interactive)
+    (pcase completion-in-region--data
+      (`(,beg ,end ,table ,pred ,extras)
+       (let ((completion-extra-properties extras)
+             completion-cycle-threshold completion-cycling)
+	 (consult-completion-in-region beg end table pred)))))
+  (add-to-list 'corfu-continue-commands #'corfu-move-to-minibuffer)
+  :bind
+  ;; What is this?
+  (:map corfu-map
+	("/" . corfu-insert-seperator)
+        ("TAB" . corfu-next)
+        ([tab] . corfu-next)
+        ("S-TAB" . corfu-previous)
+        ([backtab] . corfu-previous)
+	("?" . #'corfu-move-to-minibuffer))
   :init 
-    (global-corfu-mode)
-    (setq corfu-auto t))
+  (global-corfu-mode))
+
+(use-package nerd-icons-corfu
+  :ensure t
+  :demand t
+  :after corfu
+  :config
+  (add-to-list 'corfu-margin-formatters #'nerd-icons-corfu-formatter))
 
 ;; Popper
 (use-package popper
@@ -276,6 +308,12 @@
   :demand t
   :config (simpleclip-mode t))
 
+;; Ace Window
+
+(use-package ace-window
+  :ensure t
+  :demand t
+  )
 ;; Jinx
 
 ;; Eat
@@ -284,6 +322,7 @@
 
 (use-package lsp-mode
   :ensure t
+  :after clojure-mode
   :hook
   ((clojure-mode . lsp)
      (clojurec-mode . lsp)
@@ -310,13 +349,31 @@
 
 (use-package lsp-ui
   :ensure t
+  :demand t
   :commands lsp-ui-mode)
 
+;; SmartParens
+(use-package smartparens
+  :ensure t
+  :demand t)
+
 ;;;; Clojure
+
+;; Clojure-Mode
+(use-package clojure-mode
+  :ensure t
+  :demand t
+  :custom
+  (clojure-indent-style 'align-arguments)
+  (clojure-align-forms-automatically t)
+  :config
+  (add-hook 'clojure-mode-hook #'smartparens-strict-mode)
+  (add-hook 'clojure-mode-hook #'rainbow-delimiters-mode))
 
 ;; Cider
 (use-package cider
   :ensure t
+  :after clojure-mode
   :demand t)
 
 ;;;; Theme & Font
@@ -366,9 +423,9 @@
       (t . (1.1))))
 
     ;;;; Advanced Config
-    (modus-themes-common-palette-overrides
-      '((border-mode-line-active bg-mode-line-active)
-        (border-mode-line-inactive bg-mode-line-inactive)))
+    ;;(modus-themes-common-palette-overrides
+      ;;'((border-mode-line-active bg-mode-line-active)
+        ;;(border-mode-line-inactive bg-mode-line-inactive)))
 
     ;; Remember that more (MUCH MORE) can be done with overrides, which we
     ;; document extensively in the modus-themes manual.
@@ -400,7 +457,15 @@
   :ensure t
   :demand t
   :after nerd-icons
-  :init (doom-modeline-mode 1))
+  :init (doom-modeline-mode 1)
+  :custom
+  (doom-modeline-height 35)
+  :config
+  ;; TODO: Set Modeline face font using Fontaine for Fontaine functionality!
+  (custom-set-faces
+   '(mode-line ((t (:height 1.1))))
+   '(mode-line-active ((t (:height 1.1)))) ; For 29+
+   '(mode-line-inactive ((t (:height 1.1))))))
 
 ;;;; Fonts
 ;; Amazing explanation of vanilla font config & Fontaine by Prot

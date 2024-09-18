@@ -56,6 +56,8 @@
 
 ;; meow
 (use-package meow :ensure t :demand t
+  :bind
+  ("A-r" . meow-last-buffer)
   :config 
   (defun meow-setup ()
   (setq meow-cheatsheet-layout meow-cheatsheet-layout-qwerty)
@@ -148,7 +150,9 @@
 ;; Magit
 (use-package magit
   :ensure t
-  :demand t)
+  :demand t
+  :bind
+  ("A-g" . magit-status))
 
 ;; Transient - Needed as a Workaround for Magit
 (use-package transient :ensure t :demand t)
@@ -158,15 +162,14 @@
 
 ;; Avy
 (use-package avy :ensure t :demand t
-  :config
-  ; TODO: Configure these here: https://github.com/abo-abo/avy
-  ;(global-set-key (kbd "C-'") 'avy-goto-char)
-  (global-set-key (kbd "C-:") 'avy-goto-char-timer)
-  ;(global-set-key (kbd "M-g w") 'avy-goto-word-1)
-  ;(global-set-key (kbd "C-'") 'avy-goto-char-2)
-  (global-set-key (kbd "M-g f") 'avy-goto-line)
+  :bind
+  (("A-a" . 'avy-goto-char-timer)
+   ("A-l" . 'avy-goto-line))
+  :init
   (avy-setup-default)
-  (global-set-key (kbd "C-c C-j") 'avy-resume))
+  :custom
+  (avy-all-windows t)
+  (avy-case-fold-search t))
 
 ; TODO NOTE: Revisit this to superpower Avy Usage:
 ; https://karthinks.com/software/avy-can-do-anything/#dot-dot-dot-avy-s-documentation-leaves-out-the-best-part
@@ -249,34 +252,27 @@
 (use-package corfu
   :ensure t
   :demand t
-  :custom
-  ;; Autocompletion
-  (corfu-auto nil)
-  ;; Eager Quitting
-  (corfu-quit-no-match 'seperator)
-  ;; Enable cycling for `corfu-next/previous'
-  (corfu-cycle t)
-  ;; Always preselect the prompt
-  (corfu-preselect 'prompt)
-  :config
-  (defun corfu-move-to-minibuffer ()
-    (interactive)
-    (pcase completion-in-region--data
-      (`(,beg ,end ,table ,pred ,extras)
-       (let ((completion-extra-properties extras)
-             completion-cycle-threshold completion-cycling)
-	 (consult-completion-in-region beg end table pred)))))
-  (add-to-list 'corfu-continue-commands #'corfu-move-to-minibuffer)
-  :bind
-  ;; What is this?
-  (:map corfu-map
-	("/" . corfu-insert-seperator)
-        ("TAB" . corfu-next)
-        ([tab] . corfu-next)
-        ("S-TAB" . corfu-previous)
-        ([backtab] . corfu-previous)
-	("?" . #'corfu-move-to-minibuffer))
-  :init 
+  ;; Optional customizations
+  ;; :custom
+  ;; (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
+  ;; (corfu-auto t)                 ;; Enable auto completion
+  ;; (corfu-separator ?\s)          ;; Orderless field separator
+  ;; (corfu-quit-at-boundary nil)   ;; Never quit at completion boundary
+  ;; (corfu-quit-no-match nil)      ;; Never quit, even if there is no match
+  ;; (corfu-preview-current nil)    ;; Disable current candidate preview
+  ;; (corfu-preselect 'prompt)      ;; Preselect the prompt
+  ;; (corfu-on-exact-match nil)     ;; Configure handling of exact matches
+  ;; (corfu-scroll-margin 5)        ;; Use scroll margin
+
+  ;; Enable Corfu only for certain modes. See also `global-corfu-modes'.
+  ;; :hook ((prog-mode . corfu-mode)
+  ;;        (shell-mode . corfu-mode)
+  ;;        (eshell-mode . corfu-mode))
+
+  ;; Recommended: Enable Corfu globally.  This is recommended since Dabbrev can
+  ;; be used globally (M-/).  See also the customization variable
+  ;; `global-corfu-modes' to exclude certain modes.
+  :init
   (global-corfu-mode))
 
 (use-package nerd-icons-corfu
@@ -306,6 +302,10 @@
 (use-package simpleclip
   :ensure t
   :demand t
+  :bind
+  (("A-x" . simpleclip-cut)
+   ("A-c" . simpleclip-copy)
+   ("A-v" . simpleclip-paste))
   :config (simpleclip-mode t))
 
 ;; Ace Window
@@ -313,7 +313,27 @@
 (use-package ace-window
   :ensure t
   :demand t
-  )
+  :bind
+  ("A-w" . 'ace-window)
+  :config
+  ;(aw-reverse-frame-list t)
+  (setq aw-dispatch-always t
+	aw-keys '(?a ?s ?d ?f ?j ?k ?l)
+	aw-dispatch-alist
+	'((?q aw-delete-window "Ace - Delete Window")
+	  (?c aw-copy-window "Ace - Copy Window")
+	  (?m aw-swap-window "Ace - Swap Window")
+	  (?n aw-flip-window "Ace - Flip Window")
+	  (?v aw-split-window-vert "Ace - Split Vert Window")
+	  (?h aw-split-window-horz "Ace - Split Horz Window")
+	  (?g delete-other-windows "Ace - Maximize Window")
+	  (?b balance-windows)
+	  (?u (lambda ()
+		(progn
+		  (winner-undo)
+		  (setq this-command 'winner-undo))))
+	  (?r winner-redo))))
+
 ;; Jinx
 
 ;; Eat
@@ -576,20 +596,32 @@
 (use-package emacs
   :ensure nil
   :demand t
-  :config
+  :bind
+  (("A-b" . pop-to-buffer)
+   ("A-f" . project-find-file)
+   ("A-F" . find-file))
+    :config
     (setq scroll-margin 5)
     (setq scroll-conservatively 101)
   :custom
     ;;;; Theming
-    ;; Remove Title Bar
-    ;(add-to-list 'default-frame-alist '(undecorated . t))
-    ;; Remove Welcome Screen
     (inhibit-startup-screen t)
     (menu-bar-mode nil)
     (tool-bar-mode nil)
     (scroll-bar-mode nil)
     (frame-resize-pixelwise t)
- 
+
+    ;;;; Corfu
+    ;; TAB cycle if there are only few candidates
+    ; (completion-cycle-threshold 3)
+    ;; Enable indentation+completion using the TAB key.
+    ;; `completion-at-point' is often bound to M-TAB.
+    (tab-always-indent 'complete)
+    ;; Hide commands in M-x which do not apply to the current mode.  Corfu
+    ;; commands are hidden, since they are not used via M-x. This setting is
+    ;; useful beyond Corfu.
+    (read-extended-command-predicate #'command-completion-default-include-p)
+    
     ;;;; Vertico
     ;; Support opening new minibuffers from inside existing minibuffers.
     (enable-recursive-minibuffers t)

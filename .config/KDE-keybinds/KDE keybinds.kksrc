@@ -15,7 +15,7 @@ Activate Next Tab=Ctrl+]; Ctrl+PgDown
 Activate Previous Tab=Ctrl+PgUp; Ctrl+[
 ActualSize=Ctrl+0
 AddBookmark=Ctrl+B
-Back=Alt+Left; Back
+Back=Back; Alt+Left
 BackwardWord=Ctrl+Left
 Begin=Ctrl+Home
 BeginningOfLine=Home
@@ -25,7 +25,7 @@ ConfigureNotifications=
 ConfigureToolbars=
 Copy=Ctrl+Ins; Ctrl+C
 CreateFolder=Ctrl+Shift+N
-Cut=Shift+Del; Ctrl+X
+Cut=Ctrl+X; Shift+Del
 DeleteFile=Shift+Del
 DeleteWordBack=Ctrl+Backspace
 DeleteWordForward=Ctrl+Del
@@ -42,14 +42,14 @@ FindPrev=Shift+F3
 FitToHeight=
 FitToPage=
 FitToWidth=
-Forward=Forward; Alt+Right
+Forward=Alt+Right; Forward
 ForwardWord=Ctrl+Right
 FullScreen=Ctrl+Shift+F
 Goto=
 GotoLine=Ctrl+G
 GotoPage=
 Help=F1
-Home=Alt+Home; Home Page
+Home=Home Page; Alt+Home
 KeyBindings=Ctrl+Alt+,
 Mail=
 MoveToTrash=Del
@@ -57,10 +57,10 @@ New=Ctrl+N
 Next=PgDown
 NextCompletion=Ctrl+Down
 Open=Ctrl+O
-OpenContextMenu=Shift+F10; Menu
+OpenContextMenu=Menu; Shift+F10
 OpenMainMenu=F10
 OpenRecent=
-Paste=Ctrl+V; Shift+Ins
+Paste=Shift+Ins; Ctrl+V
 Paste Selection=Ctrl+Shift+Ins
 Preferences=Ctrl+Shift+,
 PrevCompletion=Ctrl+Up
@@ -69,7 +69,7 @@ PrintPreview=
 Prior=PgUp
 Quit=Ctrl+Q
 Redo=Ctrl+Shift+Z
-Reload=F5; Refresh
+Reload=Refresh; F5
 RenameFile=F2
 Replace=Ctrl+R
 ReportBug=
@@ -79,7 +79,7 @@ RotateUp=Up
 Save=Ctrl+S
 SaveAs=Ctrl+Shift+S
 SelectAll=Ctrl+A
-ShowHideHiddenFiles=Ctrl+H; Alt+.
+ShowHideHiddenFiles=Alt+.; Ctrl+H
 ShowMenubar=Ctrl+M
 ShowStatusbar=
 ShowToolbar=
@@ -91,11 +91,19 @@ Undo=Ctrl+Z
 Up=Alt+Up
 WhatsThis=Shift+F1
 Zoom=
-ZoomIn=Ctrl++; Ctrl+=
+ZoomIn=Ctrl+=; Ctrl++
 ZoomOut=Ctrl+-
+
+[albert.desktop][Global Shortcuts]
+_launch=Ctrl+Space
 
 [emacs.desktop][Global Shortcuts]
 _launch=Meta+E
+
+[emacsclient.desktop][Global Shortcuts]
+_launch=Meta+E
+new-instance=
+new-window=
 
 [kaccess][Global Shortcuts]
 Toggle Screen Reader On and Off=Meta+Alt+S
@@ -115,7 +123,7 @@ decrease_volume_small=Shift+Volume Down
 increase_microphone_volume=Microphone Volume Up
 increase_volume=Volume Up
 increase_volume_small=Shift+Volume Up
-mic_mute=Microphone Mute; Meta+Volume Mute
+mic_mute=Meta+Volume Mute; Microphone Mute
 mute=Volume Mute
 
 [ksmserver][Global Shortcuts]
@@ -341,7 +349,7 @@ RunClipboard=Alt+Shift+F2
 _launch=Search; Meta+Space
 
 [org.kde.kscreen.desktop][Global Shortcuts]
-ShowOSD=Meta+P; Display
+ShowOSD=Display; Meta+P
 
 [org.kde.plasma-systemmonitor.desktop][Global Shortcuts]
 _launch=Meta+Esc
@@ -354,7 +362,7 @@ ActiveWindowScreenShot=Meta+Print
 CurrentMonitorScreenShot=
 FullScreenScreenShot=Shift+Print
 OpenWithoutScreenshot=
-RecordRegion=Meta+R; Meta+Shift+R
+RecordRegion=Meta+Shift+R; Meta+R
 RecordScreen=Meta+Alt+R
 RecordWindow=Meta+Ctrl+R
 RectangularRegionScreenShot=Meta+Shift+Print

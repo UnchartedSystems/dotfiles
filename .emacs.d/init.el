@@ -1,3 +1,4 @@
+;; -*- lexical-binding: t -*-
 
 ;;;; Bootstrapping Elpaca
 
@@ -48,7 +49,7 @@
   ;; Enable use-package :ensure support for Elpaca.
   (elpaca-use-package-mode))
 
-;;;; Start Init
+;;;; Useful Packages
 
 ;; which-key
 (use-package which-key :ensure t :demand t
@@ -177,17 +178,35 @@
 ;; Marginalia
 (use-package marginalia
   :ensure t
-  :config
+  :demand t
+  ;; Bind `marginalia-cycle' locally in the minibuffer.  To make the binding
+  ;; available in the *Completions* buffer, add it to the
+  ;; `completion-list-mode-map'.
+  :bind (:map minibuffer-local-map
+         ("M-a" . marginalia-cycle))
+
+  ;; The :init section is always executed.
+  :init
+
+  ;; Marginalia must be activated in the :init section of use-package such that
+  ;; the mode gets enabled right away. Note that this forces loading the
+  ;; package.
   (marginalia-mode))
 
 ; Consult
 (use-package consult
   :ensure t
-  :demand t)
+  :demand t
+  :bind
+  (("A-b" . consult-buffer)
+   ("A-k" . consult-yank-from-kill-ring)
+   ("A-p" . consult-project-buffer)
+   ("A-f" . consult-recent-file)))
 
 ; Embark
 (use-package embark
   :ensure t
+  :demand t
   :bind
       (("C-." . embark-act)         ;; pick some comfortable binding
        ("C-;" . embark-dwim)        ;; good alternative: M-.
@@ -200,7 +219,7 @@
       ;; Eldoc strategy, if you want to see the documentation from
       ;; multiple providers. Beware that using this can be a little
       ;; jarring since the message shown in the minibuffer can be more
-      ;; than one line, causing the modeline to move up and down:
+      ;; than one line, causing the mode line to move up and down:
 
       ;; (add-hook 'eldoc-documentation-functions #'embark-eldoc-first-target)
       ;; (setq eldoc-documentation-strategy #'eldoc-documentation-compose-eagerly)
@@ -312,12 +331,23 @@
 
 (use-package ace-window
   :ensure t
-  :demand t
+  :defer 1
   :bind
   ("A-w" . 'ace-window)
   :config
-  ;(aw-reverse-frame-list t)
+; (set-face-attribute
+;  'aw-leading-char-face nil
+;  :foreground "deep sky blue"
+;  :weight 'bold
+;  :height 3.0)
+; (set-face-attribute
+;  'aw-mode-line-face nil
+;  :inherit 'mode-line-buffer-id
+;   :foreground "lawn green")
   (setq aw-dispatch-always t
+	;default cursor-in-non-selected-windows 'hollow
+	aw-scope 'frame
+	aw-reverse-frame-list t
 	aw-keys '(?a ?s ?d ?f ?j ?k ?l)
 	aw-dispatch-alist
 	'((?q aw-delete-window "Ace - Delete Window")
@@ -343,6 +373,16 @@
 (use-package lsp-mode
   :ensure t
   :after clojure-mode
+  :bind
+  ;;;; TODO: Ensure these only run for clojure lsp mode!!
+  ("H-d" . lsp-find-definition)
+  ("H-r" . lsp-find-references)
+  ("H-R" . lsp-rename)
+  ;;;; TODO: fix lsp workspace symbol for Vertico... Looks very useful!!
+  ;; ("H-p" . lsp-ui-find-workspace-symbol)
+
+  ;;;; NOTE: there are a lot more!
+  ;; https://clojure-lsp.io/features/#find-a-functionvar-definition
   :hook
   ((clojure-mode . lsp)
      (clojurec-mode . lsp)
@@ -443,9 +483,9 @@
       (t . (1.1))))
 
     ;;;; Advanced Config
-    ;;(modus-themes-common-palette-overrides
-      ;;'((border-mode-line-active bg-mode-line-active)
-        ;;(border-mode-line-inactive bg-mode-line-inactive)))
+    (modus-themes-common-palette-overrides
+      '((border-mode-line-active bg-mode-line-active)
+        (border-mode-line-inactive bg-mode-line-inactive)))
 
     ;; Remember that more (MUCH MORE) can be done with overrides, which we
     ;; document extensively in the modus-themes manual.
@@ -478,14 +518,15 @@
   :demand t
   :after nerd-icons
   :init (doom-modeline-mode 1)
-  :custom
-  (doom-modeline-height 35)
+;  :custom
+;  (doom-modeline-height 35)
   :config
   ;; TODO: Set Modeline face font using Fontaine for Fontaine functionality!
   (custom-set-faces
    '(mode-line ((t (:height 1.1))))
    '(mode-line-active ((t (:height 1.1)))) ; For 29+
-   '(mode-line-inactive ((t (:height 1.1))))))
+   '(mode-line-inactive ((t (:height 1.1)))))
+  )
 
 ;;;; Fonts
 ;; Amazing explanation of vanilla font config & Fontaine by Prot
@@ -597,9 +638,10 @@
   :ensure nil
   :demand t
   :bind
-  (("A-b" . pop-to-buffer)
-   ("A-f" . project-find-file)
-   ("A-F" . find-file))
+  (("A-d" . project-find-file)
+   ("A-F" . find-file)
+   ("A-s" . save-buffer)
+   ("A-q" . kill-buffer))
     :config
     (setq scroll-margin 5)
     (setq scroll-conservatively 101)
@@ -611,6 +653,10 @@
     (scroll-bar-mode nil)
     (frame-resize-pixelwise t)
 
+    ;;;; Consult
+    ;; recentf-mode is used for recent file history
+    (recentf-mode t)
+    
     ;;;; Corfu
     ;; TAB cycle if there are only few candidates
     ; (completion-cycle-threshold 3)

@@ -8,7 +8,7 @@
             }
         ],
         "target_uinput": "keyboard",
-        "output_symbol": "modify(KEY_RIGHTCTRL, key(x)).wait(1).\nmodify(KEY_RIGHTSHIFT, key(2)).wait(1).\nkey(h).",
+        "output_symbol": "modify(KEY_RIGHTCTRL, key(x)).wait(1).\nmodify(KEY_RIGHTSHIFT, key(2)).wait(1).\nkey(a).",
         "mapping_type": "key_macro"
     },
     {
@@ -20,7 +20,19 @@
             }
         ],
         "target_uinput": "keyboard",
-        "output_symbol": "modify(KEY_RIGHTCTRL, key(x)).wait(1).\nmodify(KEY_RIGHTSHIFT, key(2)).wait(1).\nkey(a).",
+        "output_symbol": "modify(KEY_RIGHTCTRL, key(x)).wait(1).\nmodify(KEY_RIGHTSHIFT, key(2)).wait(1).\nkey(h).",
+        "mapping_type": "key_macro"
+    },
+    {
+        "input_combination": [
+            {
+                "type": 1,
+                "code": 97,
+                "origin_hash": "9dcbc04d59adb21d6bf2ecfda514d643"
+            }
+        ],
+        "target_uinput": "keyboard",
+        "output_symbol": "modify(KEY_RIGHTCTRL, key(x)).wait(1).\nmodify(KEY_RIGHTSHIFT, key(2)).wait(1).\nkey(s).",
         "mapping_type": "key_macro"
     }
 ]

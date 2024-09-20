@@ -291,6 +291,14 @@
   ;; Recommended: Enable Corfu globally.  This is recommended since Dabbrev can
   ;; be used globally (M-/).  See also the customization variable
   ;; `global-corfu-modes' to exclude certain modes.
+  :bind
+  (:map corfu-map
+	("/" . corfu-insert-seperator)
+        ("TAB" . corfu-next)
+        ([tab] . corfu-next)
+        ("S-TAB" . corfu-previous)
+        ([backtab] . corfu-previous)
+	("?" . #'corfu-move-to-minibuffer))
   :init
   (global-corfu-mode))
 
@@ -376,7 +384,7 @@
   :bind
   ;;;; TODO: Ensure these only run for clojure lsp mode!!
   ("H-d" . lsp-find-definition)
-  ("H-r" . lsp-find-references)
+  ("H-r" . lsp-ui-peek-find-references)
   ("H-R" . lsp-rename)
   ;;;; TODO: fix lsp workspace symbol for Vertico... Looks very useful!!
   ;; ("H-p" . lsp-ui-find-workspace-symbol)
@@ -384,9 +392,9 @@
   ;;;; NOTE: there are a lot more!
   ;; https://clojure-lsp.io/features/#find-a-functionvar-definition
   :hook
-  ((clojure-mode . lsp)
-     (clojurec-mode . lsp)
-     (clojurescript-mode . lsp))
+  ((clojure-mode . lsp-mode)
+     (clojurec-mode . lsp-mode)
+     (clojurescript-mode . lsp-mode))
   :custom
   (lsp-completion-provider :none)
   :init
@@ -410,10 +418,26 @@
 (use-package lsp-ui
   :ensure t
   :demand t
+  :after lsp-mode
   :commands lsp-ui-mode)
 
 ;; SmartParens
 (use-package smartparens
+  :ensure t
+  :demand t
+  :init
+  (require 'smartparens-config)
+  :config
+  (smartparens-global-mode t)
+  (show-smartparens-global-mode t))
+
+;; Rainbow-Delimiters
+(use-package rainbow-delimiters
+  :ensure t
+  :demand t)
+
+;; Aggressive-Indent
+(use-package aggressive-indent
   :ensure t
   :demand t)
 
@@ -423,12 +447,14 @@
 (use-package clojure-mode
   :ensure t
   :demand t
+  :after (smartparens clojure-mode aggressive-indent-mode)
   :custom
   (clojure-indent-style 'align-arguments)
   (clojure-align-forms-automatically t)
-  :config
-  (add-hook 'clojure-mode-hook #'smartparens-strict-mode)
-  (add-hook 'clojure-mode-hook #'rainbow-delimiters-mode))
+  :hook
+  ('clojure-mode-hook #'smartparens-strict-mode)
+  ('clojure-mode-hook #'rainbow-delimiters-mode)
+  ('clojure-mode-hook #'aggressive-indent-mode))
 
 ;; Cider
 (use-package cider
@@ -638,59 +664,61 @@
   :ensure nil
   :demand t
   :bind
-  (("A-d" . project-find-file)
-   ("A-F" . find-file)
+  ( ("A-F" . find-file)
    ("A-s" . save-buffer)
-   ("A-q" . kill-buffer))
-    :config
-    (setq scroll-margin 5)
-    (setq scroll-conservatively 101)
+   ("A-q" . kill-buffer)
+   ("A-Q" . delete-window))
+  :config
+  (setq scroll-margin 5)
+  (setq scroll-conservatively 101)
   :custom
     ;;;; Theming
-    (inhibit-startup-screen t)
-    (menu-bar-mode nil)
-    (tool-bar-mode nil)
-    (scroll-bar-mode nil)
-    (frame-resize-pixelwise t)
+  (inhibit-startup-screen t)
+  (menu-bar-mode nil)
+  (tool-bar-mode nil)
+  (scroll-bar-mode nil)
+  (frame-resize-pixelwise t)
 
     ;;;; Consult
-    ;; recentf-mode is used for recent file history
-    (recentf-mode t)
-    
+  ;; recentf-mode is used for recent file history
+  (recentf-mode t)
+  
     ;;;; Corfu
-    ;; TAB cycle if there are only few candidates
-    ; (completion-cycle-threshold 3)
-    ;; Enable indentation+completion using the TAB key.
-    ;; `completion-at-point' is often bound to M-TAB.
-    (tab-always-indent 'complete)
-    ;; Hide commands in M-x which do not apply to the current mode.  Corfu
-    ;; commands are hidden, since they are not used via M-x. This setting is
-    ;; useful beyond Corfu.
-    (read-extended-command-predicate #'command-completion-default-include-p)
-    
+  ;; TAB cycle if there are only few candidates
+					; (completion-cycle-threshold 3)
+  ;; Enable indentation+completion using the TAB key.
+  ;; `completion-at-point' is often bound to M-TAB.
+  (tab-always-indent 'complete)
+  ;; Hide commands in M-x which do not apply to the current mode.  Corfu
+  ;; commands are hidden, since they are not used via M-x. This setting is
+  ;; useful beyond Corfu.
+  (read-extended-command-predicate #'command-completion-default-include-p)
+  
     ;;;; Vertico
-    ;; Support opening new minibuffers from inside existing minibuffers.
-    (enable-recursive-minibuffers t)
-    ;; Hide commands in M-x which do not work in the current mode.  Vertico
-    ;; commands are hidden in normal buffers. This setting is useful beyond
-    ;; Vertico.
-    (read-extended-command-predicate #'command-completion-default-include-p)
+  ;; Support opening new minibuffers from inside existing minibuffers.
+  (enable-recursive-minibuffers t)
+  ;; Hide commands in M-x which do not work in the current mode.  Vertico
+  ;; commands are hidden in normal buffers. This setting is useful beyond
+  ;; Vertico.
+  (read-extended-command-predicate #'command-completion-default-include-p)
+  :hook
+  ('emacs-lisp-mode-hook #'aggressive-indent-mode)
   :init
-    ;; Add prompt indicator to `completing-read-multiple'.
-    ;; We display [CRM<separator>], e.g., [CRM,] if the separator is a comma.
-    (defun crm-indicator (args)
-      (cons (format "[CRM%s] %s"
-                    (replace-regexp-in-string
-                     "\\`\\[.*?]\\*\\|\\[.*?]\\*\\'" ""
-                     crm-separator)
-                    (car args))
-            (cdr args)))
-    (advice-add #'completing-read-multiple :filter-args #'crm-indicator)
+  ;; Add prompt indicator to `completing-read-multiple'.
+  ;; We display [CRM<separator>], e.g., [CRM,] if the separator is a comma.
+  (defun crm-indicator (args)
+    (cons (format "[CRM%s] %s"
+                  (replace-regexp-in-string
+                   "\\`\\[.*?]\\*\\|\\[.*?]\\*\\'" ""
+                   crm-separator)
+                  (car args))
+          (cdr args)))
+  (advice-add #'completing-read-multiple :filter-args #'crm-indicator)
 
-    ;; Do not allow the cursor in the minibuffer prompt
-    (setq minibuffer-prompt-properties
-          '(read-only t cursor-intangible t face minibuffer-prompt))
-    (add-hook 'minibuffer-setup-hook #'cursor-intangible-mode))
+  ;; Do not allow the cursor in the minibuffer prompt
+  (setq minibuffer-prompt-properties
+        '(read-only t cursor-intangible t face minibuffer-prompt))
+  (add-hook 'minibuffer-setup-hook #'cursor-intangible-mode))
 
 ;; Generated By Emacs
 

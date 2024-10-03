@@ -53,15 +53,24 @@
 (use-package which-key :ensure t :demand t
   :config (which-key-setup-side-window-bottom))
 
-;; meow
+;; TODO: interesting ergonomic Meow config to steal from:
+;; https://github.com/meow-edit/meow/issues/506
+;; Meow
 (defun nt-wrap-string () (interactive) (sp-wrap-with-pair "\""))
 (use-package meow :ensure t :demand t
+  :custom
+  (meow-mode-state-list '((cider-repl-mode . motion)
+			 (cider-test-report-mode . motion)
+			 (cider-browse-spec-view-mode . motion)
+			 (ediff-mode . motion)))
   :config 
   (defun meow-setup ()
     (setopt meow-cheatsheet-layout meow-cheatsheet-layout-qwerty)
+    ;; Motion Mode is for special buffers with their own binds
+    ;; Think magit, cider repl, eshell, etc
     (meow-motion-overwrite-define-key
-     '("j" . meow-next)
-     '("k" . meow-prev)
+     ;'("j" . meow-next)
+     ;'("k" . meow-prev)
      '("<escape>" . ignore))
     (meow-leader-define-key
      ;; SPC j/k will run the original command in MOTION state.
@@ -102,7 +111,9 @@
      '("L" . meow-right-expand)
      ;; Negation & Reversal
      '("'" . negative-argument)
-     '("\"" . meow-reverse)
+     '(";" . meow-reverse)
+     ;; Repeat
+     '(":" . repeat)
      ;; Making region of [thing]
      '("," . meow-inner-of-thing)
      '("." . meow-bounds-of-thing)
@@ -148,12 +159,10 @@
      ;; Undo
      '("u" . meow-undo)
      '("U" . meow-undo-in-selection)
-     ;; Repeat
-     '(";" . repeat)
      ;; Grab, Swap, Sync, & Pop - TODO: WTF are these?
      '("R" . meow-swap-grab)
      '("Y" . meow-sync-grab)
-					;'("z" . meow-pop-selection)
+     ;; '("z" . meow-pop-selection)
      ;; Emacs Integration
      '("q" . meow-quit)
      '("Q" . quit-window)
@@ -190,10 +199,12 @@
      '("‘" . sp-backward-kill-sexp) ; A-[
      '("’" . sp-kill-sexp) ; A-]
      ;; Absorb & Transpose
-     '("“" . sp-absorb-sexp))) ; A-{
-  '("”" . sp-transpose-sexp) ;A-}
+     '("“" . sp-absorb-sexp) ; A-{
+     '("”" . sp-transpose-sexp))) ; A-}
+  ()
   (meow-setup)
   (meow-global-mode 1))
+
 
 
 ;; Magit
@@ -236,7 +247,7 @@
   :custom
   (ag-highlight-search t)
   :bind
-  (("A-/" . ag)))
+  (("A-/" . ag-project)))
 
 ;; Marginalia
 (use-package marginalia
@@ -247,16 +258,14 @@
   ;; `completion-list-mode-map'.
   :bind (:map minibuffer-local-map
               ("M-a" . marginalia-cycle))
-
   ;; The :init section is always executed.
   :init
-
   ;; Marginalia must be activated in the :init section of use-package such that
   ;; the mode gets enabled right away. Note that this forces loading the
   ;; package.
   (marginalia-mode))
 
-					; Consult
+;; Consult
 (use-package consult
   :ensure t
   :demand t
@@ -264,14 +273,14 @@
   (("A-b" . consult-buffer)
    ("A-B" . ibuffer)
    ("A-k" . consult-yank-from-kill-ring)
-   ("A-P" . consult-project-buffer)
+   ("¶" . consult-project-buffer) ; A-P
    ("A-p" . project-find-file)
    ("A-f" . consult-recent-file)
    ;; TODO: Try to consolidate line fns into 1 compound consult fn
    ("A-l" . consult-line)
    ("A-L" . consult-goto-line)))
 
-					; Embark
+;; Embark
 (use-package embark
   :ensure t
   :demand t
@@ -318,7 +327,7 @@
   :init
   (vertico-mode))
 
-					; Persist history over Emacs restarts. Vertico sorts by history position.
+;; Persist history over Emacs restarts. Vertico sorts by history position.
 (use-package savehist
   :init
   (savehist-mode))
@@ -432,6 +441,40 @@
 		    (setopt this-command 'winner-undo))))
 	    (?r winner-redo))))
 
+
+;; ibuffer customization
+(use-package all-the-icons-ibuffer
+  :ensure t
+  :demand t
+  :custom
+  (all-the-icons-ibuffer-formats
+   `((mark modified read-only locked vc-status-mini
+           ;; Here you may adjust by replacing :right with :center or :left
+           ;; According to taste, if you want the icon further from the name
+           " " ,(if all-the-icons-ibuffer-icon
+                    '(icon 2 2 :left :elide)
+                  "")
+           ,(if all-the-icons-ibuffer-icon
+                (propertize " " 'display `(space :align-to 8))
+              "")
+           (name 18 18 :left :elide)
+           " " (size-h 9 -1 :right)
+           " " (mode+ 16 16 :left :elide)
+           " " (vc-status 16 16 :left)
+           " " vc-relative-file)
+     (mark " " (name 16 -1) " " filename)))
+  :hook (ibuffer-mode . all-the-icons-ibuffer-mode))
+
+;; ibuffer-vc
+(use-package ibuffer-vc
+  :ensure t
+  :demand t
+  :hook
+  (ibuffer . (lambda ()
+	       (ibuffer-vc-set-filter-groups-by-vc-root)
+	       (unless (eq ibuffer-sorting-mode 'alphabetic)
+		 (ibuffer-do-sort-by-alphabetic)))))
+
 ;; Jinx
 
 ;; Eat
@@ -501,9 +544,10 @@
 ;; Aggressive-Indent
 (use-package aggressive-indent
   :ensure t
-  :demand t
-  :hook
-  (prog-mode . aggressive-indent-mode))
+  :demand t)
+;;:hook
+;;(prog-mode . aggressive-indent-mode)
+
 
 ;;;; Clojure
 
@@ -520,6 +564,8 @@
   :ensure t
   :demand t
   :after clojure-mode
+  :custom
+  (cider-repl-display-help-banner nil)
   :bind
   (("H-c" . cider-repl-handle-shortcut)))
 
@@ -711,11 +757,11 @@
   (define-key global-map (kbd "C-c f") #'fontaine-set-preset))
 
 ;;;; Keybinds Philosophy (via reddit)
-					; Use Hyper as a namespace for your personal bindings per mode.
-					; Use Alt as a namespace for you personal bindings that are global.
-					; Do not customize a single binding in any other namespace.
-					; Your Emacs life will be so simple after that.
-					; You will use this approach for the rest of your life.
+;; Use Hyper as a namespace for your personal bindings per mode.
+;; Use Alt as a namespace for you personal bindings that are global.
+;; Do not customize a single binding in any other namespace.
+;; Your Emacs life will be so simple after that.
+;; You will use this approach for the rest of your life.
 
 ;; TODO: Bind Hyper to a key for use with meow-keypad
 ;; Bind useful functions within Hyper and Alt
@@ -725,10 +771,12 @@
   :ensure nil
   :demand t
   :bind
-  (("A-e" . other-window)
+  (;; Note: Add useful window binds to A-E & A-D
+   ("A-d" . other-window)
+   ("A-e" . other-window-prev)
    ("A-F" . find-file)
    ("A-s" . save-buffer)
-   ("A-q" . kill-buffer)
+   ("A-q" . kill-current-buffer)
    ("A-Q" . delete-window))
   :config
   (defun bedrock--backup-file-name (fpath)
@@ -739,6 +787,21 @@
       (make-directory (file-name-directory backupFilePath) (file-name-directory backupFilePath))
       backupFilePath))
   (setopt make-backup-file-name-function 'bedrock--backup-file-name)
+
+  (byte-compile-file "~/.emacs.d/align-clojure-ns.el" 'load)
+
+    ;;;; Backup Files
+  (setq lock-file-name-transforms
+	'(("\\`/.*/\\([^/]+\\)\\'" "~/.emacs.d/.temp/\\1" t)))
+  (setq auto-save-file-name-transforms
+	'(("\\`/.*/\\([^/]+\\)\\'" "~/.emacs.d/.temp/\\1" t)))
+  (setq backup-directory-alist
+	'((".*" . "~/.emacs.d/.temp/")))
+  
+  (defun other-window-prev ()
+    (interactive)
+    (other-window -1))
+  
   :custom
   ;;;; Bedrock
   ;; Automatically reread from disk if the underlying file changes
@@ -750,28 +813,38 @@
   (global-auto-revert-mode)
   (sentence-end-double-space nil)
   (make-backup-file-name-function 'bedrock--backup-file-name)
-  (switch-to-buffer-obey-display-actions t)
   (line-number-mode t)
   (column-number-mode t)
   (blink-cursor-mode -1)
-  ;;;; Backup Files
-  (setq lock-file-name-transforms
-	'(("\\`/.*/\\([^/]+\\)\\'" "~/.emacs.d/.temp/\\1" t)))
-  (setq auto-save-file-name-transforms
-	'(("\\`/.*/\\([^/]+\\)\\'" "~/.emacs.d/.temp/\\1" t)))
-  (setq backup-directory-alist
-	'((".*" . "~/.emacs.d/.temp/")))
+
+  ;;;; Gopar
+  ;; Pulled from this config:
+  ;; https://github.com/gopar/.emacs.d/blob/main/README.org
+  (debugger-stack-frame-as-list t)
+  (narrow-to-defun-include-comments t)
+  (use-short-answers t)
+  (confirm-nonexistent-file-or-buffer nil)
+  (switch-to-buffer-obey-display-actions t)
+  (history-delete-duplicates t)
+  (completion-ignore-case t)
+  (use-dialog-box nil)
+
+  (project-vc-extra-root-markers '(".project"))
+
+  ;;;; Startup
+  (inhibit-splash-screen t)
+  (initial-buffer-choice (lambda () (ibuffer) (get-buffer "*Ibuffer*")))
+
+ 
   ;;;; Theming
-  (inhibit-startup-screen t)
   (menu-bar-mode nil)
   (tool-bar-mode nil)
-  (scroll-bar-mode nil)
-  (frame-resize-pixelwise t)
-  (pixel-scroll-precision-mode t)
-  (project-vc-extra-root-markers '(".project"))
   ;;;; Scrolling
+  (scroll-bar-mode nil)
   (scroll-margin 5)
   (scroll-conservatively 101)
+  (frame-resize-pixelwise t)
+  (pixel-scroll-precision-mode t)
   ;;;; Consult
   ;; recentf-mode is used for recent file history
   (recentf-mode t)
@@ -822,12 +895,16 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(custom-safe-themes
-   '("8d146df8bd640320d5ca94d2913392bc6f763d5bc2bb47bed8e14975017eea91" default)))
+   '("8d146df8bd640320d5ca94d2913392bc6f763d5bc2bb47bed8e14975017eea91" default))
+ '(safe-local-variable-values
+   '((cider-cli-clojure-parameters . "-J--add-modules=jdk.incubator.foreign -J--enable-native-access=ALL-UNNAMED"))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- )
+ '(mode-line ((t (:height 1.1))))
+ '(mode-line-active ((t (:height 1.1))))
+ '(mode-line-inactive ((t (:height 1.1)))))
 
 

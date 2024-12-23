@@ -201,7 +201,6 @@
      ;; Absorb & Transpose
      '("“" . sp-absorb-sexp) ; A-{
      '("”" . sp-transpose-sexp))) ; A-}
-  ()
   (meow-setup)
   (meow-global-mode 1))
 
@@ -567,7 +566,8 @@
   :custom
   (cider-repl-display-help-banner nil)
   :bind
-  (("H-c" . cider-repl-handle-shortcut)))
+  (("H-c" . cider-eval-region)
+   ("H-n" . cider-repl-set-ns)))
 
 ;;;; Theme & Font
 
@@ -895,7 +895,7 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(custom-safe-themes
-   '("8d146df8bd640320d5ca94d2913392bc6f763d5bc2bb47bed8e14975017eea91" default))
+   '("a75aff58f0d5bbf230e5d1a02169ac2fbf45c930f816f3a21563304d5140d245" "8d146df8bd640320d5ca94d2913392bc6f763d5bc2bb47bed8e14975017eea91" default))
  '(safe-local-variable-values
    '((cider-cli-clojure-parameters . "-J--add-modules=jdk.incubator.foreign -J--enable-native-access=ALL-UNNAMED"))))
 (custom-set-faces

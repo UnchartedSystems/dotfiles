@@ -1,0 +1,29 @@
+{
+  "title": "Right Option to Control + Option",
+  "rules": [
+    {
+      "description": "Remap Right Option to Control + Option (passes through other modifiers like Shift, Command, etc.)",
+      "manipulators": [
+        {
+          "type": "basic",
+          "from": {
+            "key_code": "right_option",
+            "modifiers": {
+              "optional": [
+                "any"
+              ]
+            }
+          },
+          "to": [
+            {
+              "key_code": "left_option",
+              "modifiers": [
+                "left_control"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

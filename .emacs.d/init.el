@@ -60,7 +60,7 @@
   :init
   (vertico-mode)
   :custom
-  (vertico-count 20)
+  (vertico-count 15)
   (vertico-resize t)
   (vertico-cycle t)
   :config
@@ -70,27 +70,12 @@
 ;; Persist history over Emacs restarts. Vertico sorts by history position.
 (use-package savehist
   :ensure nil
-  :init
-  (savehist-mode))
+  :init (savehist-mode))
 
 (use-package orderless
   :custom
   (completion-styles '(orderless basic))
   (completion-category-overrides '((file (styles basic partial-completion)))))
-
-(use-package avy
-  :init
-  (avy-setup-default)
-  :config
-  (defun avy-goto-parens ()
-    (interactive)
-    (let ((avy-command this-command))   ; for look up in avy-orders-alist
-      (avy-jump "(+")))
-  :bind
-  (("A-a" . 'avy-goto-char-timer)
-   ("A-s" . 'avy-goto-parens))
-  :custom
-  (avy-timeout-seconds 0.8))
 
 (use-package marginalia
   ;; Bind `marginalia-cycle' locally in the minibuffer.  To make the binding
@@ -98,7 +83,7 @@
   ;; `completion-list-mode-map'.
   :bind 
   (:map minibuffer-local-map
-    ("M-a" . marginalia-cycle))
+    ("s-'" . marginalia-cycle))
   :init
   (marginalia-mode))
 
@@ -106,8 +91,8 @@
 ;; https://github.com/oantolin/embark/
 (use-package embark
   :bind
-  (("A-Q" . embark-act)         ;; pick some comfortable binding
-   ("A-W" . embark-dwim)        ;; good alternative: M-.
+  (("s-n" . embark-act)         ;; pick some comfortable binding
+   ("s-m" . embark-dwim)        ;; good alternative: M-.
    ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
   :init
   ;; Optionally replace the key help with a completing-read interface
@@ -124,18 +109,16 @@
 (use-package consult
   ;; TODO: Replace bindings.
   :bind (;; C-c bindings in `mode-specific-map'
-         ("C-c h" . consult-history)
-         ("H-b" . consult-buffer)                ;; orig. switch-to-buffer
+         ("s-b" . consult-buffer)                   ;; orig. switch-to-buffer
+	 ("s-y" . consult-bookmark)                 ;; orig. switch-to-buffer
          ;("C-x 4 b" . consult-buffer-other-window) ;; orig. switch-to-buffer-other-window
-         ("H-f" . consult-buffer-other-frame)  ;; orig. switch-to-buffer-other-frame
-         ("H-p" . consult-project-buffer)            ;; orig. project-switchs-to-buffer
-         ;; Custom M-# bindings for fast register access
+         ("s-f" . consult-buffer-other-frame)       ;; orig. switch-to-buffer-other-frame
+         ("s-p" . consult-project-buffer)           ;; orig. project-switchs-to-buffer
          ("M-#" . consult-register-load)
-         ("M-'" . consult-register-store)                ;; orig. abbrev-prefix-mark (unrelated)
-         ;; Other custom bindings
-         ("M-y" . consult-yank-pop)                      ;; orig. yank-pop
-	 ("A-/" . consult-ripgrep)
-         ("M-s l" . consult-line))                       ;; needed by consult-line to detect isearch
+         ("M-'" . consult-register-store)           ;; orig. abbrev-prefix-mark (unrelated)
+         ("M-y" . consult-yank-pop)                 ;; orig. yank-pop
+	 ("s-;" . consult-ripgrep)
+         ("s-/" . consult-line-multi))              ;; needed by consult-line to detect isearch
   :hook 
   (completion-list-mode . consult-preview-at-point-mode)
   :init
@@ -170,7 +153,9 @@
 ;; TODO: set up Corfu
 ;; https://github.com/meatcar/emacs.d
 ;; https://github.com/minad/corfu
-(use-package corfu)
+(use-package corfu
+ :init
+ (global-corfu-mode))
 
 ;; TODO: Set up after Corfu
 ;; https://kristofferbalintona.me/posts/202203130102/
@@ -188,6 +173,26 @@
 (use-package rainbow-delimiters
   :hook ((prog-mode . rainbow-delimiters-mode)))
 
+;;; ELDOC
+;; Eldoc provides helpful inline documentation for functions and variables
+;; in the minibuffer, enhancing the development experience. It can be particularly useful
+;; in programming modes, as it helps you understand the context of functions as you type.
+;; This package is built-in, so there's no need to fetch it separately.
+;; The following line enables Eldoc globally for all buffers.
+(use-package eldoc
+  :ensure nil                                ;; This is built-in, no need to fetch it.
+  :config
+  (setq eldoc-idle-delay 0)                  ;; Automatically fetch doc help
+  (setq eldoc-echo-area-use-multiline-p nil) ;; We use the "K" floating help instead
+                                             ;; set to t if you want docs on the echo area
+  (setq eldoc-echo-area-display-truncation-message nil)
+  :init
+  (global-eldoc-mode))
+
+(use-package eldoc-box
+  :bind
+  ("s-h" . eldoc-box-help-at-point))
+
 ;; Clojure
 
 (use-package clojure-mode)
@@ -202,12 +207,37 @@
 ;;(use-package add-node-modules-path)
 
 ;; Markdown
+(use-package markdown-mode
+  :mode ("\\.md\\'" . gfm-mode)
+  :hook ((markdown-mode . visual-line-mode)
+         (markdown-mode . visual-fill-column-mode))
+  :custom
+  (markdown-header-scaling t)
+  (markdown-fontify-code-blocks-natively t)
+  (markdown-max-image-size '(600 . 400))
+  (markdown-hide-markup nil)
+  (markdown-command "pandoc"))
 
-;;(use-package markdown-mode
-  ;:mode ("README\\.md\\'" . gfm-mode)
-  ;:init (setq markdown-command "multimarkdown")
-  ;:bind (:map markdown-mode-map ("C-c C-e" . markdown-do)))
+(use-package visual-fill-column
+  :custom
+  (visual-fill-column-width 90)
+  (visual-fill-column-center-text t))
 
+;; Avy
+
+(use-package avy
+  :init
+  (avy-setup-default)
+  :config
+  (defun avy-goto-parens ()
+    (interactive)
+    (let ((avy-command this-command))   ; for look up in avy-orders-alist
+      (avy-jump "(+")))
+  :bind
+  (("s-a" . 'avy-goto-char-timer)
+   ("s-s" . 'avy-goto-parens))
+  :custom
+  (avy-timeout-seconds 0.8))
 
 ;;;; Keybinds
 
@@ -259,16 +289,16 @@
    ("A-u" . sp-backward-up-sexp)
    ;; Manipulation
    ;; Consider Wrapping Fn: https://ebzzry.com/en/emacs-pairs/
-   ("s-m" . sp-unwrap-sexp)
-   ("s-n" . sp-backward-unwrap-sexp)
-   ("s-j" . sp-forward-slurp-sexp)
-   ("s-h" . sp-backward-slurp-sexp)
-   ("s-l" . sp-forward-barf-sexp)
-   ("s-k" . sp-backward-barf-sexp)
-   ("s-b" . sp-transpose-sexp) ; Swapping symbols
-   ("s-o" . sp-kill-sexp)
-   ("s-i" . sp-backward-kill-sexp)
-   ("s-p" . sp-kill-hybrid-sexp)))
+   ("A-r" . sp-unwrap-sexp)
+   ("A-t" . sp-backward-unwrap-sexp)
+   ("A-g" . sp-forward-slurp-sexp)
+   ("A-f" . sp-backward-slurp-sexp)
+   ("A-d" . sp-forward-barf-sexp)
+   ("A-s" . sp-backward-barf-sexp)
+   ("A-a" . sp-transpose-sexp) ; Swapping symbols
+   ("A-v" . sp-kill-sexp)
+   ("A-c" . sp-backward-kill-sexp)
+   ("A-b" . sp-kill-hybrid-sexp)))
 
 
 ;; https://github.com/meow-edit/meow/blob/master/COMMANDS.org
@@ -376,9 +406,10 @@
 
 (use-package no-littering
   :config
-  (setq
-   auto-save-file-name-transforms
-   `((".*" ,(no-littering-expand-var-file-name "auto-save/") t)))
+  (setq auto-save-file-name-transforms
+	`((".*" ,(no-littering-expand-var-file-name "auto-save/") t)))
+  (setq backup-directory-alist
+        `(("." . ,(no-littering-expand-var-file-name "backup/"))))
   (setq custom-file (no-littering-expand-etc-file-name "custom.el"))
   (when (file-exists-p custom-file)
     (load custom-file)))
@@ -456,6 +487,7 @@
 
 ;;;; Version Control
 
+;; https://blog.alarsyo.net/posts/2025/02/on-jujutsu-and-magit/#know-more-about-jj
 ;; Magit
 
 ;; Magit-Todos
@@ -465,6 +497,24 @@
 ;; Diff-hl
 
 ;; Jujutsu?
+
+;;;; Themes
+
+(use-package nerd-icons)
+
+(use-package nerd-icons-completion
+  :after marginalia
+  :config
+  (add-hook 'marginalia-mode-hook #'nerd-icons-completion-marginalia-setup))
+
+(use-package nerd-icons-corfu
+  :after corfu
+  :config
+  (add-to-list 'corfu-margin-formatters #'nerd-icons-corfu-formatter))
+
+(use-package nerd-icons-dired
+  :hook
+  (dired-mode . nerd-icons-dired-mode))
 
 ;;;; Emacs
 
@@ -490,9 +540,12 @@
   (setq inhibit-startup-message t)
   (tool-bar-mode -1)
   (menu-bar-mode -1)
-					;(scroll-bar-mode -1)
+  ;;(scroll-bar-mode -1)
   ;; Highlight current line.
   (global-hl-line-mode t)
+  ;; Change delete settings
+  (setq delete-by-moving-to-trash t)
+  (setq delete-selection-mode 1)
   ;; Shows matching parens
   (show-paren-mode t)
   (setq show-paren-delay 0.0)
@@ -523,7 +576,7 @@
   :config
   ;; Bedrock
   ;; Move through windows with Ctrl-<arrow keys>
-  (windmove-default-keybindings 'control)
+  (windmove-default-keybindings 'super)
   ;; Enable context menu. `vertico-multiform-mode' adds a menu in the minibuffer to switch display modes.
   (context-menu-mode t)
   ;; Make right-click do something sensible

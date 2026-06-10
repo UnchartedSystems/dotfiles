@@ -1,15 +1,15 @@
 ;; -*- lexical-binding: t; -*-
 
 ;;;; Bootstrapping Elpaca
-(defvar elpaca-installer-version 0.11)
+(defvar elpaca-installer-version 0.12)
 (defvar elpaca-directory (expand-file-name "elpaca/" user-emacs-directory))
 (defvar elpaca-builds-directory (expand-file-name "builds/" elpaca-directory))
-(defvar elpaca-repos-directory (expand-file-name "repos/" elpaca-directory))
+(defvar elpaca-sources-directory (expand-file-name "sources/" elpaca-directory))
 (defvar elpaca-order '(elpaca :repo "https://github.com/progfolio/elpaca.git"
                               :ref nil :depth 1 :inherit ignore
                               :files (:defaults "elpaca-test.el" (:exclude "extensions"))
-                              :build (:not elpaca--activate-package)))
-(let* ((repo  (expand-file-name "elpaca/" elpaca-repos-directory))
+                              :build (:not elpaca-activate)))
+(let* ((repo  (expand-file-name "elpaca/" elpaca-sources-directory))
        (build (expand-file-name "elpaca/" elpaca-builds-directory))
        (order (cdr elpaca-order))
        (default-directory repo))
@@ -48,6 +48,7 @@
 
 (setq use-package-always-ensure t)
 
+(use-package compat)
 
 ;;;; Completion & Menu Packages
 
@@ -72,18 +73,22 @@
   :ensure nil
   :init (savehist-mode))
 
+;; Remembers cursor position in closed files
+(use-package saveplace
+  :ensure nil
+  :init
+  (save-place-mode 1))
+
 (use-package orderless
   :custom
   (completion-styles '(orderless basic))
+  ;(completion-category-defaults nil)
   (completion-category-overrides '((file (styles basic partial-completion)))))
 
 (use-package marginalia
   ;; Bind `marginalia-cycle' locally in the minibuffer.  To make the binding
   ;; available in the *Completions* buffer, add it to the
   ;; `completion-list-mode-map'.
-  :bind 
-  (:map minibuffer-local-map
-    ("s-'" . marginalia-cycle))
   :init
   (marginalia-mode))
 
@@ -91,9 +96,8 @@
 ;; https://github.com/oantolin/embark/
 (use-package embark
   :bind
-  (("s-n" . embark-act)         ;; pick some comfortable binding
-   ("s-m" . embark-dwim)        ;; good alternative: M-.
-   ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
+  (("s-;" . embark-act))         ;; pick some comfortable binding
+   ;;("s-m" . embark-dwim)        ;; good alternative: M-.
   :init
   ;; Optionally replace the key help with a completing-read interface
   (setq prefix-help-command #'embark-prefix-help-command)
@@ -107,18 +111,6 @@
 ;; https://www.matem.unam.mx/~omar/apropos-emacs.html#the-case-against-whics-key-a-polemic
 ;; TODO: worth reading over! https://github.com/minad/consult
 (use-package consult
-  ;; TODO: Replace bindings.
-  :bind (;; C-c bindings in `mode-specific-map'
-         ("s-b" . consult-buffer)                   ;; orig. switch-to-buffer
-	 ("s-y" . consult-bookmark)                 ;; orig. switch-to-buffer
-         ;("C-x 4 b" . consult-buffer-other-window) ;; orig. switch-to-buffer-other-window
-         ("s-f" . consult-buffer-other-frame)       ;; orig. switch-to-buffer-other-frame
-         ("s-p" . consult-project-buffer)           ;; orig. project-switchs-to-buffer
-         ("M-#" . consult-register-load)
-         ("M-'" . consult-register-store)           ;; orig. abbrev-prefix-mark (unrelated)
-         ("M-y" . consult-yank-pop)                 ;; orig. yank-pop
-	 ("s-;" . consult-ripgrep)
-         ("s-/" . consult-line-multi))              ;; needed by consult-line to detect isearch
   :hook 
   (completion-list-mode . consult-preview-at-point-mode)
   :init
@@ -138,8 +130,8 @@
    consult-theme :preview-key '(:debounce 0.2 any)
    consult-ripgrep consult-git-grep consult-grep consult-man
    consult-bookmark consult-recent-file consult-xref
-   consult--source-bookmark consult--source-file-register
-   consult--source-recent-file consult--source-project-recent-file
+   consult-source-bookmark consult-source-file-register
+   consult-source-recent-file consult-source-project-recent-file
    ;; :preview-key "M-."
    :preview-key '(:debounce 0.4 any))
   ;; Optionally configure the narrowing key.
@@ -150,25 +142,43 @@
   :hook
   (embark-collect-mode . consult-preview-at-point))
 
-;; TODO: set up Corfu
+;; TODO: set up Corfu later
 ;; https://github.com/meatcar/emacs.d
 ;; https://github.com/minad/corfu
 (use-package corfu
- :init
- (global-corfu-mode))
+  :bind
+  ("A-SPC" . completion-at-point)
+  (:map corfu-map ("SPC" . corfu-insert-separator))
+  :init
+  (global-corfu-mode))
 
-;; TODO: Set up after Corfu
 ;; https://kristofferbalintona.me/posts/202203130102/
 ;; https://www.youtube.com/watch?v=Vx0bSKF4y78&t=768s
-(use-package cape)
+(use-package cape
+  :after corfu
+  :init
+  (add-hook 'completion-at-point-functions #'cape-file)
+  (add-hook 'completion-at-point-functions #'cape-dabbrev)
+  (add-hook 'completion-at-point-functions #'cape-keyword)
+  :config
+  (advice-add 'dabbrev-capf :around #'cape-wrap-silent)
+  (advice-add 'dabbrev-capf :around #'cape-wrap-purify))
 
 ;; TODO integrate Emacs into Window Buffer
-
 
 ;;;; Development
 
 ;; Setup: https://github.com/karthink/gptel
-(use-package gptel)
+(use-package gptel :defer t)
+
+;; Essential to have a REPL MCP for long time horizon LISP dev:
+;; https://github.com/bhauman/clojure-mcp
+
+(use-package agent-shell
+  :config
+  (setq agent-shell-openai-authentication
+	(agent-shell-openai-make-authentication :login t))
+  (setq agent-shell-preferred-agent-config (agent-shell-openai-make-codex-config)))
 
 (use-package rainbow-delimiters
   :hook ((prog-mode . rainbow-delimiters-mode)))
@@ -182,29 +192,73 @@
 (use-package eldoc
   :ensure nil                                ;; This is built-in, no need to fetch it.
   :config
-  (setq eldoc-idle-delay 0)                  ;; Automatically fetch doc help
+  (setq eldoc-idle-delay 0.3)                  ;; Automatically fetch doc help
   (setq eldoc-echo-area-use-multiline-p nil) ;; We use the "K" floating help instead
                                              ;; set to t if you want docs on the echo area
   (setq eldoc-echo-area-display-truncation-message nil)
   :init
   (global-eldoc-mode))
 
-(use-package eldoc-box
-  :bind
-  ("s-h" . eldoc-box-help-at-point))
+;; TODO: consider using eldoc-box later
+;(use-package eldoc-box
+;  :bind
+;  ("s-h" . eldoc-box-help-at-point))
+
+;; LSP
+(use-package eglot
+  :ensure nil
+  :defer t)
+
+(use-package flymake
+  :ensure nil)
+
+;; Terminal
+(use-package eat
+  :defer t)
 
 ;; Clojure
 
-(use-package clojure-mode)
+(use-package clojure-mode :defer t)
 
-(use-package cider
-  :hook (clojure-mode . cider-mode))
+(use-package cider :defer t
+  :hook ((clojure-mode clojurescript-mode clojurec-mode) . cider-mode)
+  :custom
+  (cider-repl-display-help-banner nil)
+  (cider-repl-pop-to-buffer-on-connect nil)
+  (cider-save-file-on-load t)
+  (cider-use-overlays t)
+  (cider-overlays-use-font-lock t))
 
-(use-package clj-refactor
+
+(use-package clj-refactor :defer t
   :after cider
   :hook (clojure-mode . clj-refactor-mode))
 
 ;;(use-package add-node-modules-path)
+
+;; Version Control for Jujutsu
+;;;; Version Control using Jujutsu
+
+(use-package magit
+  :commands (magit-status magit-dispatch))
+
+(use-package transient)
+
+(use-package with-editor)
+
+(use-package vc-jj
+  :after project)
+
+;; https://blog.alarsyo.net/posts/2025/02/on-jujutsu-and-magit/#know-more-about-jj
+(use-package majutsu
+  :ensure (:host github :repo "0WD0/majutsu")
+  :after (magit transient with-editor)
+  :commands (majutsu majutsu-log)
+  :config
+  ;; Keep Majutsu buffers readable with your Meow setup.
+  ;; Majutsu already supplies its own modal-style keys inside its buffers:
+  ;; n/p navigate, RET visits, ? opens the dispatcher.
+  )
 
 ;; Markdown
 (use-package markdown-mode
@@ -224,20 +278,26 @@
   (visual-fill-column-center-text t))
 
 ;; Avy
+(defun my/avy-goto-delimiter ()
+  (interactive)
+  (avy-jump "[][(){}\"]"))
 
 (use-package avy
   :init
   (avy-setup-default)
-  :config
-  (defun avy-goto-parens ()
-    (interactive)
-    (let ((avy-command this-command))   ; for look up in avy-orders-alist
-      (avy-jump "(+")))
   :bind
   (("s-a" . 'avy-goto-char-timer)
-   ("s-s" . 'avy-goto-parens))
+   ("s-s" . my/avy-goto-delimiter))
   :custom
   (avy-timeout-seconds 0.8))
+
+;; Helpful
+(use-package helpful)
+
+;; TODO: Wgrep
+;; Can allow editing grep results in collected buffer
+(use-package wgrep
+  :defer t)
 
 ;;;; Keybinds
 
@@ -262,210 +322,392 @@
             (define-key input-decode-map key nil)))))
     (message "Remove Default Alt Bindings: %d" (length alt-keys))))
 
+;; macOS input
+(when (eq system-type 'darwin)
+  (setq ns-right-option-modifier 'super
+        ns-right-control-modifier 'alt)
+  (remove-alt-default-bindings))
+
 ;; Great Smartparens guide: 
 ;; https://ebzzry.com/en/emacs-pairs/
+(defun my/sp-wrap-double-quote ()
+  (interactive)
+  (sp-wrap-with-pair "\""))
+
 (use-package smartparens
   :hook 
   ((prog-mode . smartparens-mode)
    (text-mode . smartparens-mode)
    (markdown-mode . smartparens-mode))
   ;;(prog-mode text-mode markdown-mode) ;; add `smartparens-mode` to these hooks
+  :bind
+  (;; Traversal
+   ("A-p" . sp-forward-sexp)
+   ("A-;" . sp-backward-sexp)
+   ("A-o" . sp-down-sexp)
+   ("A-l" . sp-backward-down-sexp)
+   ("A-i" . sp-up-sexp)
+   ("A-k" . sp-backward-up-sexp)
+   ;; Manipulation
+   ;; Consider Wrapping Fn: https://ebzzry.com/en/emacs-pairs/
+   ("A-r" . sp-splice-sexp)
+   ("A-e" . sp-unwrap-sexp)
+   ("A-w" . sp-rewrap-sexp)
+   ("A-f" . sp-forward-slurp-sexp)
+   ("A-d" . sp-backward-slurp-sexp)
+   ("A-s" . sp-forward-barf-sexp)
+   ("A-a" . sp-backward-barf-sexp))
   :config
   ;; load default config
   (require 'smartparens-config)
-  :bind
-  (;; Traversal
-   ("A-l" . sp-beginning-of-sexp)
-   ("A-;" . sp-end-of-sexp)
-   ("A-k" . sp-forward-sexp)
-   ("A-j" . sp-backward-sexp)
-   ("A-m" . sp-next-sexp)
-   ("A-n" . sp-previous-sexp)
-   ("A-p" . sp-forward-symbol)
-   ("A-o" . sp-backward-symbol)
-   ("A-h" . sp-down-sexp)
-   ("A-b" . sp-backward-down-sexp)
-   ("A-i" . sp-up-sexp)
-   ("A-u" . sp-backward-up-sexp)
-   ;; Manipulation
-   ;; Consider Wrapping Fn: https://ebzzry.com/en/emacs-pairs/
-   ("A-r" . sp-unwrap-sexp)
-   ("A-t" . sp-backward-unwrap-sexp)
-   ("A-g" . sp-forward-slurp-sexp)
-   ("A-f" . sp-backward-slurp-sexp)
-   ("A-d" . sp-forward-barf-sexp)
-   ("A-s" . sp-backward-barf-sexp)
-   ("A-a" . sp-transpose-sexp) ; Swapping symbols
-   ("A-v" . sp-kill-sexp)
-   ("A-c" . sp-backward-kill-sexp)
-   ("A-b" . sp-kill-hybrid-sexp)))
 
+  ;; Wrapping Menu
+  (defvar my/sp-wrap-menu-items
+    '((?s "square" sp-wrap-square)
+      (?c "curly"  sp-wrap-curly)
+      (?r "round"  sp-wrap-round)
+      (?g "string"  my/sp-wrap-double-quote))
+    "Single-key Smartparens wrapping menu entries.")
+
+  (defun my/sp-wrap-menu--render ()
+    "Render a Meow-like key table for `my/sp-wrap-menu'."
+    (let* ((cell-width 25)
+           (columns (max 1 (min 5 (/ (frame-width) cell-width)))))
+      (string-trim-right
+       (mapconcat
+	#'identity
+	(cl-loop
+	 for (key label _) in my/sp-wrap-menu-items
+	 for index from 0
+	 collect
+	 (concat
+          (propertize
+           (format "%-8s" (char-to-string key))
+           'face 'font-lock-constant-face)
+          (propertize " → " 'face 'font-lock-comment-face)
+          (propertize
+           (format "%-13s" label)
+           'face 'font-lock-function-name-face)
+          (if (= (1- columns) (mod index columns)) "\n" " ")))
+	""))))
+
+  (defun my/sp-wrap-menu--read ()
+    "Read one wrapping key from `my/sp-wrap-menu-items'."
+    (read-char-choice
+     (concat (my/sp-wrap-menu--render) "\nWrap with: ")
+     (mapcar #'car my/sp-wrap-menu-items)))
+
+  (defun my/sp-wrap-menu (&optional arg)
+    "Meow-like popup menu for Smartparens wrapping.
+     With an active region, wrap the region.  Otherwise, defer to the
+     selected Smartparens wrapping command."
+    (interactive "P")
+    (let* ((key (my/sp-wrap-menu--read))
+           (command (nth 2 (assq key my/sp-wrap-menu-items))))
+      (unless (commandp command)
+	(user-error "No Smartparens wrapper for %c" key))
+      (let ((current-prefix-arg arg))
+	(call-interactively command)))))
+
+;; Unused Binds
+; ("A-l" . sp-beginning-of-sexp)
+; ("A-;" . sp-end-of-sexp)
+; ("A-m" . sp-next-sexp)
+; ("A-n" . sp-previous-sexp)
+; ("A-t" . sp-backward-unwrap-sexp)
+; ("A-v" . sp-kill-sexp)
+; ("A-c" . sp-backward-kill-sexp)
+; ("A-x" . sp-kill-hybrid-sexp)
+; ("A-p" . sp-forward-symbol)
+; ("A-o" . sp-backward-symbol)
+
+;; Meow Spacebar Prefixes
+(defvar my/leader-prefixes (make-hash-table :test #'equal)
+  "Private Meow leader prefix symbols keyed by display title.")
+
+(defun my/leader-prefix (title)
+  "Return the private leader prefix symbol named TITLE."
+  (or (gethash title my/leader-prefixes)
+      (error "No leader prefix named %S" title)))
+
+(defun my/leader-prefix-define (title bindings)
+  "Define a private Meow leader prefix named TITLE with BINDINGS. Each element of BINDINGS is either:
+  (KEY COMMAND)
+  or:
+  (KEY :prefix TITLE)"
+  (unless (stringp title)
+    (error "Leader prefix title must be a string: %S" title))
+  (let ((symbol (make-symbol title))
+        (map (make-sparse-keymap)))
+    (dolist (binding bindings)
+      (pcase binding
+        (`(,key :prefix ,prefix-title)
+         (unless (stringp prefix-title)
+           (error "Prefix reference must be a string: %S" prefix-title))
+         (keymap-set map key (my/leader-prefix prefix-title)))
+        (`(,key ,command)
+         (keymap-set map key command))
+        (_
+         (error "Invalid leader binding: %S" binding))))
+    (fset symbol map)
+    (puthash title symbol my/leader-prefixes)
+    symbol))
+
+(defmacro my/defleader-prefix (title &rest bindings)
+  "Define a private Meow leader prefix named TITLE."
+  (declare (indent 1))
+  `(my/leader-prefix-define ,title ',bindings))
 
 ;; https://github.com/meow-edit/meow/blob/master/COMMANDS.org
 (use-package meow
   :config
   (defun meow-setup ()
-    (setq meow-cheatsheet-layout meow-cheatsheet-layout-qwerty)
+    ;; Keymap Definitions
+    (my/defleader-prefix "active buffer"
+      ("s" replace-string)
+      ("w" delete-trailing-whitespace)
+      ("i" indent-region))
+
+    (my/defleader-prefix "eglot"
+      ("a" eglot-code-actions)
+      ("r" eglot-rename)
+      ("f" eglot-format-buffer))
+
+    (my/defleader-prefix "cider"
+      ;; connection/session
+      ("j" cider-jack-in)
+      ("J" cider-jack-in-cljs)
+      ("c" cider-connect-clj)
+      ("C" cider-connect-cljs)
+      ("q" cider-quit)
+      ("r" cider-restart)
+      ("s" cider-sesman-browser)
+
+      ;; eval/load
+      ("e" cider-eval-defun-at-point)
+      ("E" cider-eval-last-sexp)
+      ("b" cider-eval-buffer)
+      ("l" cider-load-buffer)
+      ("R" cider-eval-region)
+      ("p" cider-pprint-eval-defun-at-point)
+      ("i" cider-inspect-last-result)
+
+      ;; repl
+      ("z" cider-switch-to-repl-buffer)
+      ("Z" cider-switch-to-last-clojure-buffer)
+      ("x" cider-repl-clear-buffer)
+      ("n" cider-repl-set-ns)
+
+      ;; navigation/docs
+      ("." cider-find-var)
+      ("," cider-pop-back)
+      ("d" cider-doc)
+      ("D" cider-clojuredocs)
+      ("a" cider-apropos)
+
+      ;; tests/debug
+      ("t" cider-test-run-test)
+      ("T" cider-test-run-ns-tests)
+      ("P" cider-test-run-project-tests)
+      ("F" cider-test-rerun-failed-tests)
+      ("g" cider-debug-defun-at-point)
+
+      ;; refresh/refactor
+      ("u" cider-ns-refresh)
+      ("f" cider-format-buffer)
+      ("m" cljr-rename-symbol)
+      ("A" cljr-add-require-to-ns)
+      ("N" cljr-clean-ns))
+
+        (my/defleader-prefix "dev"
+      ("i" consult-imenu)
+      ("o" consult-outline)
+      ("t" eat-project)
+      ("j" majutsu)
+      ("J" majutsu-log)
+      ("e" :prefix "eglot")
+      ("c" :prefix "cider"))
+
+    (my/defleader-prefix "files"
+      ("f" find-file)
+      ("d" consult-dir)
+      ("r" consult-recent-file)
+      ("c" cape-file)
+      ("R" rename-visited-file)
+      ("D" dired-jump)    
+      ("X" delete-file)    
+      ("s" save-buffer))
+
+    (my/defleader-prefix "buffers"
+      ("b"  consult-buffer)
+      ("X"  kill-buffer)
+      ("R"  revert-buffer)
+      ("s"  scratch-buffer)
+      ("i"  ibuffer))
+
+    (my/defleader-prefix "windows"
+      ("h" windmove-left)
+      ("j" windmove-down)
+      ("k" windmove-up)
+      ("l" windmove-right)
+      ("v" split-window-right)
+      ("s" split-window-below)
+      ("a" ace-window)
+      ("X" delete-window)
+      ("O" delete-other-windows)
+      ("=" balance-windows)
+      ("w" consult-buffer-other-window)
+      ("f" consult-buffer-other-frame))
+
+    (my/defleader-prefix "tools"
+      ("t" eat-project)
+      ("T" eat))
+
+    (my/defleader-prefix "project"
+      ("p" project-switch-project)
+      ("f" project-find-file)
+      ("d" project-dired)
+      ("b" consult-project-buffer))
+    
+    (my/defleader-prefix "search"
+      ("s" consult-ripgrep)
+      ("l" consult-line)
+      ("L" consult-line-multi)
+      ("d" xref-find-definitions)
+      ("r" xref-find-references)   
+      ("b" xref-go-back))
+
+    (my/defleader-prefix "narrow"
+      ("r" narrow-to-region)    
+      ("f" narrow-to-defun)    
+      ("w" widen))
+    
+    (my/defleader-prefix "help"
+      ("h" helpful-at-point)
+      ("k" embark-bindings))
+
+    (meow-leader-define-key   
+     (cons "a" (my/leader-prefix "active buffer"))
+     (cons "d" (my/leader-prefix "dev"))
+     (cons "f" (my/leader-prefix "files"))
+     (cons "b" (my/leader-prefix "buffers"))
+     (cons "w" (my/leader-prefix "windows"))
+     (cons "t" (my/leader-prefix "tools"))
+     (cons "p" (my/leader-prefix "project"))
+     (cons "s" (my/leader-prefix "search"))
+     (cons "n" (my/leader-prefix "narrow"))
+     (cons "?" (my/leader-prefix "help"))
+          
+     ;; Use SPC (0-9) for digit arguments.
+     '("1" . meow-digit-argument)
+     '("2" . meow-digit-argument)
+     '("3" . meow-digit-argument)
+     '("4" . meow-digit-argument)
+     '("5" . meow-digit-argument)
+     '("6" . meow-digit-argument)
+     '("7" . meow-digit-argument)
+     '("8" . meow-digit-argument)
+     '("9" . meow-digit-argument)
+     '("0" . meow-digit-argument)
+     '("/" . meow-keypad-describe-key))
     (meow-motion-overwrite-define-key
-      '("j" . meow-next)
-      '("k" . meow-prev)
-      '("<escape>" . ignore))
-    (meow-leader-define-key
-      ;; SPC j/k will run the original command in MOTION state.
-      '("j" . "s-j")
-      '("k" . "s-k")
-      ;; Use SPC (0-9) for digit arguments.
-      '("1" . meow-digit-argument)
-      '("2" . meow-digit-argument)
-      '("3" . meow-digit-argument)
-      '("4" . meow-digit-argument)
-      '("5" . meow-digit-argument)
-      '("6" . meow-digit-argument)
-      '("7" . meow-digit-argument)
-      '("8" . meow-digit-argument)
-      '("9" . meow-digit-argument)
-      '("0" . meow-digit-argument)
-      '("/" . meow-keypad-describe-key)
-      '("?" . meow-cheatsheet))
+     '("j" . meow-next)
+     '("k" . meow-prev)
+     '("<escape>" . ignore))
     (meow-normal-define-key
-      '("0" . meow-expand-0)
-      '("9" . meow-expand-9)
-      '("8" . meow-expand-8)
-      '("7" . meow-expand-7)
-      '("6" . meow-expand-6)
-      '("5" . meow-expand-5)
-      '("4" . meow-expand-4)
-      '("3" . meow-expand-3)
-      '("2" . meow-expand-2)
-      '("1" . meow-expand-1)
-      ;; Moving Around
-      '("h" . meow-left)
-      '("H" . meow-left-expand)
-      '("j" . meow-next)
-      '("J" . meow-next-expand)
-      '("k" . meow-prev)
-      '("K" . meow-prev-expand)
-      '("l" . meow-right)
-      '("L" . meow-right-expand)
-      ;; Traversal
-      '("b" . meow-back-word)
-      '("B" . meow-back-symbol)
-      '("e" . meow-next-word)
-      '("E" . meow-next-symbol)
-      '("f" . meow-find)
-      '("n" . meow-search)
-      ;; Negate & Reverse
-      '("-" . negative-argument)
-      '(";" . meow-reverse)
-      ;; Making Regions
-      '("," . meow-inner-of-thing)
-      '("." . meow-bounds-of-thing)
-      '("[" . meow-beginning-of-thing)
-      '("]" . meow-end-of-thing)
-      ;; Using Regions
-      '("g" . meow-cancel-selection)
-      '("G" . meow-grab)
-      ;; Add & Subtract
-      '("a" . meow-append)
-      '("A" . meow-open-below)
-      '("i" . meow-insert)
-      '("I" . meow-open-above)
-      '("c" . kill-region)
-      '("d" . meow-delete)
-      '("D" . meow-backward-delete)
-      ;; IDK
-      '("m" . meow-join)
-      '("o" . meow-block)
-      '("O" . meow-to-block)
-      '("p" . consult-yank-from-kill-ring)
-      '("q" . meow-quit)
-      '("Q" . meow-goto-line)
-      '("r" . meow-replace)
-      '("R" . meow-swap-grab)
-      '("s" . meow-kill)
-      '("t" . meow-till)
-      '("u" . meow-undo)
-      '("U" . meow-undo-in-selection)
-      '("v" . meow-visit)
-      '("w" . meow-mark-word)
-      '("W" . meow-mark-symbol)
-      '("x" . meow-line)
-      '("X" . meow-goto-line)
-      '("y" . meow-save)
-      '("Y" . meow-sync-grab)
-      '("z" . meow-pop-selection)
-      '("'" . repeat)
-      '("<escape>" . ignore)))
-      (meow-setup)
-      (meow-global-mode 1)
-      :custom 
-      (meow-use-clipboard t))
+     '("0" . meow-expand-0)
+     '("9" . meow-expand-9)
+     '("8" . meow-expand-8)
+     '("7" . meow-expand-7)
+     '("6" . meow-expand-6)
+     '("5" . meow-expand-5)
+     '("4" . meow-expand-4)
+     '("3" . meow-expand-3)
+     '("2" . meow-expand-2)
+     '("1" . meow-expand-1)
+     ;; Moving Around
+     '("h" . meow-left)
+     '("H" . meow-left-expand)
+     '("j" . meow-next)
+     '("J" . meow-next-expand)
+     '("k" . meow-prev)
+     '("K" . meow-prev-expand)
+     '("l" . meow-right)
+     '("L" . meow-right-expand)
+     ;; Traversal
+     '("b" . meow-back-word)
+     '("B" . meow-back-symbol)
+     '("e" . meow-next-word)
+     '("E" . meow-next-symbol)
+     '("f" . meow-find)
+     '("F" . meow-visit)
+     '("n" . meow-search)
+     ;; Negate & Reverse
+     '("-" . negative-argument)
+     '(";" . meow-reverse)
+     ;; Making Regions
+     '("," . meow-inner-of-thing)
+     '("." . meow-bounds-of-thing)
+     '("[" . meow-beginning-of-thing)
+     '("]" . meow-end-of-thing)
+     '("m" . meow-join)
+     '("o" . meow-block)
+     '("O" . meow-to-block)
+     ;; Using Regions
+     '("g" . meow-cancel-selection)
+     '("G" . meow-grab)
+     '("p" . meow-yank)
+     '("P" . consult-yank-pop)
+     '("y" . meow-save)
+     '("Y" . meow-sync-grab)
+     '("z" . meow-pop-selection)
+     '("U" . meow-undo-in-selection)
+     ;; Add & Subtract
+     '("a" . meow-append)
+     '("A" . meow-open-below)
+     '("i" . meow-insert)
+     '("I" . meow-open-above)
+     '("d" . meow-delete)
+     '("D" . meow-backward-delete)
+     ;; Other
+     '("Q" . meow-quit)
+     '("c" . comment-dwim)
+     '("r" . meow-change)
+     '("R" . meow-replace)
+     '("/" . meow-last-buffer)
+     '("s" . my/sp-wrap-menu)
+     '("v" . meow-kill)
+     '("u" . meow-undo)
+     '("w" . meow-mark-word)
+     '("W" . meow-mark-symbol)
+     '("x" . meow-line)
+     '("X" . meow-goto-line)
+     '("'" . repeat)
+     '("<escape>" . ignore)))
+  (meow-setup)
+  (meow-global-mode 1)
+  :custom 
+  (meow-use-clipboard t))
 
+;;;; UI
 
-;;;; Nice to Haves
-
-(use-package no-littering
-  :config
-  (setq auto-save-file-name-transforms
-	`((".*" ,(no-littering-expand-var-file-name "auto-save/") t)))
-  (setq backup-directory-alist
-        `(("." . ,(no-littering-expand-var-file-name "backup/"))))
-  (setq custom-file (no-littering-expand-etc-file-name "custom.el"))
-  (when (file-exists-p custom-file)
-    (load custom-file)))
-
-(use-package uniquify
+(use-package frame
   :ensure nil
-  :config
-  (setq uniquify-buffer-name-style 'forward)
-  (setq uniquify-separator "/")
-  ;; rename after killing uniquified
-  (setq uniquify-after-kill-buffer-p t)    
-  ;; don't muck with special buffers
-  (setq uniquify-ignore-buffers-re "^\\*"))
-
-;; Anzu
-
-;; Customize later: https://github.com/emacs-dashboard/emacs-dashboard
-(use-package dashboard
-  :config
-  (setq initial-buffer-choice (lambda () (get-buffer-create dashboard-buffer-name)))
-  (add-hook 'elpaca-after-init-hook #'dashboard-insert-startupify-lists)
-  (add-hook 'elpaca-after-init-hook #'dashboard-initialize)
-  ;; New: Open dashboard in new client frames
-  (add-hook 'server-after-make-frame-hook 
-            (lambda () (switch-to-buffer dashboard-buffer-name)))
-  (dashboard-setup-startup-hook))
-
-(use-package helpful
-  :config
-  ;; Note that the built-in `describe-function' includes both functions
-  ;; and macros. `helpful-function' is functions only, so we provide
-  ;; `helpful-callable' as a drop-in replacement.
-  (global-set-key (kbd "C-h f") #'helpful-callable)
-  (global-set-key (kbd "C-h v") #'helpful-variable)
-  (global-set-key (kbd "C-h k") #'helpful-key)
-  (global-set-key (kbd "C-h x") #'helpful-command)
-  ;; Lookup the current symbol at point. C-c C-d is a common keybinding
-  ;; for this in lisp modes.
-  (global-set-key (kbd "C-c C-d") #'helpful-at-point)
-  (add-to-list 'display-buffer-alist
-               '("*[Hh]elp"
-                 (display-buffer-reuse-mode-window
-                  display-buffer-pop-up-window))))
-
-(use-package ultra-scroll
-  ;:vc (:url "https://github.com/jdtsmith/ultra-scroll") ; if desired (emacs>=v30)
   :init
-  (setq scroll-conservatively 3 ; or whatever value you prefer, since v0.4
-        scroll-margin 0)        ; important: scroll-margin>0 not yet supported
-  :config
-  (ultra-scroll-mode 1))
-
-;; Garbage Collector Magic Hack
-(use-package gcmh
-  :config
-  (gcmh-mode t))
+  (tool-bar-mode -1)
+  (menu-bar-mode -1)
+  (blink-cursor-mode -1)
+  (global-hl-line-mode 1)
+  (column-number-mode 1)
+  (line-number-mode 1)
+  (show-paren-mode 1)
+  (delete-selection-mode 1)
+  :custom
+  (show-paren-delay 0.0)
+  (line-spacing 1)
+  (x-underline-at-descent-line nil)
+  (indicate-buffer-boundaries 'left)
+  (display-line-numbers-width 3))
 
 (use-package spacious-padding
   :config
@@ -480,25 +722,47 @@
   (setq spacious-padding-subtle-frame-lines nil)
   (spacious-padding-mode 1))
 
+(use-package ultra-scroll
+  ;:vc (:url "https://github.com/jdtsmith/ultra-scroll") ; if desired (emacs>=v30)
+  :init
+  (setq scroll-conservatively 3 ; or whatever value you prefer, since v0.4
+        scroll-margin 0)        ; important: scroll-margin>0 not yet supported
+  :config
+  (ultra-scroll-mode 1))
 
-;; TODO: Frames Only Mode
-;; https://github.com/davidshepherd7/frames-only-mode
-(use-package frames-only-mode)
+(use-package uniquify
+  :ensure nil
+  :config
+  (setq uniquify-buffer-name-style 'forward)
+  (setq uniquify-separator "/")
+  ;; rename after killing uniquified
+  (setq uniquify-after-kill-buffer-p t)    
+  ;; don't muck with special buffers
+  (setq uniquify-ignore-buffers-re "^\\*"))
 
-;;;; Version Control
-
-;; https://blog.alarsyo.net/posts/2025/02/on-jujutsu-and-magit/#know-more-about-jj
-;; Magit
-
-;; Magit-Todos
-
-;; Magit-Delta
-
-;; Diff-hl
-
-;; Jujutsu?
+;; Customize later: https://github.com/emacs-dashboard/emacs-dashboard
+(use-package dashboard
+  :after nerd-icons
+  :config
+  (setq dashboard-items '((projects  . 6)
+			  (registers . 6)
+			  (recents   . 15)
+                          (bookmarks . 15)))
+  (setq dashboard-display-icons-p t)
+  (setq dashboard-icon-type 'nerd-icons)
+  (setq dashboard-set-heading-icons t)
+  (setq dashboard-set-file-icons t)
+  (add-hook 'server-after-make-frame-hook 'dashboard-open)
+  (setq initial-buffer-choice 'dashboard-open)
+  (add-hook 'elpaca-after-init-hook #'dashboard-insert-startupify-lists)
+  (add-hook 'elpaca-after-init-hook #'dashboard-initialize)
+  (dashboard-setup-startup-hook))
 
 ;;;; Themes
+
+(setq modus-themes-italic-constructs t)
+
+(load-theme 'modus-vivendi-tinted t)
 
 (use-package nerd-icons)
 
@@ -516,110 +780,155 @@
   :hook
   (dired-mode . nerd-icons-dired-mode))
 
-;;;; Emacs
+;;;; Fonts
 
-(use-package emacs
+(setq inhibit-compacting-font-caches t)
+
+(defvar my/default-font-height 180)
+
+(defun my-set-font-size (&optional frame)
+  "Set font size for FRAME."
+  (let ((frame (or frame (selected-frame))))
+    (when (display-graphic-p frame)
+      (set-face-attribute 'default frame :height my/default-font-height))))
+
+(add-hook 'after-make-frame-functions #'my-set-font-size)
+
+(when (display-graphic-p)
+  (my-set-font-size))
+
+;;;; File Management
+
+(use-package no-littering
+  :config
+  (setq auto-save-file-name-transforms
+	`((".*" ,(no-littering-expand-var-file-name "auto-save/") t)))
+  (setq backup-directory-alist
+        `(("." . ,(no-littering-expand-var-file-name "backup/"))))
+  (setq custom-file (no-littering-expand-etc-file-name "custom.el"))
+  (when (file-exists-p custom-file)
+    (load custom-file)))
+
+(use-package files
+  :ensure nil
+  :custom
+  (create-lockfiles nil)
+  (backup-by-copying t)
+  (delete-old-versions t)
+  (delete-by-moving-to-trash t))
+
+(use-package consult-dir
+  :bind (("C-x C-d" . consult-dir)
+	 :map vertico-map
+         ("C-x C-d" . consult-dir)
+         ("C-x C-j" . consult-dir-jump-file)))
+
+(use-package autorevert
   :ensure nil
   :init
-  ;; Set Hotkeys 
-  (setq ns-right-option-modifier 'super)
-  (setq ns-right-control-modifier 'alt)
-  (remove-alt-default-bindings)
-  ;; Startup Performance
-  (setq inhibit-compacting-font-caches t)
-  ;; Manage Backup Files
   (global-auto-revert-mode 1)
-  (setq create-lockfiles nil)
-  (setq backup-by-copying t)
-  (setq delete-old-versions t)
-  ;; life is too short to type yes or no
-  (setq use-short-answers t)
-  ;; clean up dired buffers
-  (setq dired-kill-when-opening-new-dired-buffer t)
-  ;; Disable startup-screen, tool bar, menu bar, scroll bar.
-  (setq inhibit-startup-message t)
-  (tool-bar-mode -1)
-  (menu-bar-mode -1)
-  ;;(scroll-bar-mode -1)
-  ;; Highlight current line.
-  (global-hl-line-mode t)
-  ;; Change delete settings
-  (setq delete-by-moving-to-trash t)
-  (setq delete-selection-mode 1)
-  ;; Shows matching parens
-  (show-paren-mode t)
-  (setq show-paren-delay 0.0)
-  ;; Scales the system font size to get emacs font size. 
-  ;;(set-face-attribute 'default nil :height (floor (* (face-attribute 'default :height) 1.4)))
-
-  ;; Font size configuration
-  (defun my-set-font-size (&optional frame)
-    "Set font size for FRAME (or current frame if nil)."
-    (let ((target-frame (or frame (selected-frame))))
-      (when (display-graphic-p target-frame)
-	(with-selected-frame target-frame
-          (set-face-attribute 'default target-frame :height (floor (* (face-attribute 'default :height) 1.5)))))))
-
-  ;; Register hook for new frames (including emacsclient)
-  (add-hook 'after-make-frame-functions #'my-set-font-size)
-
-  ;; Apply immediately for regular Emacs startup
-  (when (display-graphic-p)
-    (my-set-font-size))
-
-  
-  ;; Themes
-  ;; https://protesilaos.com/emacs/modus-themes#h:bf1c82f2-46c7-4eb2-ad00-dd11fdd8b53f
-  (load-theme 'modus-vivendi-tinted) ; Prot's dark theme
-  (setq-default line-spacing 1)
-  (setq modus-themes-italic-constructs t)
-  :config
-  ;; Bedrock
-  ;; Move through windows with Ctrl-<arrow keys>
-  (windmove-default-keybindings 'super)
-  ;; Enable context menu. `vertico-multiform-mode' adds a menu in the minibuffer to switch display modes.
-  (context-menu-mode t)
-  ;; Make right-click do something sensible
-  (when (display-graphic-p)
-    (context-menu-mode))
-  ;; Cursor doesn't blink
-  (blink-cursor-mode -1)
-  ;; Show current line in modeline
-  (line-number-mode t)
-  :hook
-  ;; Display line numbers in programming mode
-  (prog-mode . display-line-numbers-mode)
-  ;; Nice line wrapping when working with text
-  (text-mode . visual-line-mode)
   :custom
-  ;;; Bedrock
-  ;; Automatically reread from disk if the underlying file changes
-  (auto-revert-avoid-polling t)
-  ;; Some systems don't do file notifications well; see https://todo.sr.ht/~ashton314/emacs-bedrock/11
+  ;; Some systems don't do file notifications well: https://todo.sr.ht/~ashton314/emacs-bedrock/11
+  ;(auto-revert-avoid-polling t)
+  (auto-revert-avoid-polling nil)
   (auto-revert-interval 5)
-  (auto-revert-check-vc-info t)
-  ;; Fix archaic defaults
-  (sentence-end-double-space nil)
+  (auto-revert-check-vc-info t))
+
+;;;; Garbage Collector Magic Hack
+(use-package gcmh
+  :config
+  (gcmh-mode t))
+
+(use-package ace-window
+  :bind
+  ("s-/" . ace-window)
+  :custom
+  (aw-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l)))
+
+;; TODO: Consider using Frames Only Mode later
+;; https://github.com/davidshepherd7/frames-only-mode
+;; (use-package frames-only-mode)
+
+;;;; Files
+
+;; Batch Editing Directories & Files:
+;; https://www.youtube.com/watch?v=1E0ThCSr8Qw
+(use-package dired
+  :ensure nil
+  :custom
+  (dired-kill-when-opening-new-dired-buffer t)
+  (dired-vc-rename-file t))
+
+(use-package dirvish
+  :after dired
+  :config
+  (dirvish-override-dired-mode))
+
+;;;; Emacs Core Packages
+
+(use-package project
+  :ensure nil
+  :custom
+  (project-vc-extra-root-markers '(".project")))
+
+(use-package ediff
+  :ensure nil
+  :custom
+  (ediff-window-setup-function 'ediff-setup-windows-plain))  ; Ediff uses the existing frame
+
+(use-package prog-mode
+  :ensure nil
+  :hook
+  (prog-mode . display-line-numbers-mode))
+
+(use-package text-mode
+  :ensure nil
+  :hook
+  (text-mode . visual-line-mode))
+
+(use-package minibuffer
+  :ensure nil
+  :custom
   (enable-recursive-minibuffers t)
-  (apropos-do-all t) ;; Apropos commands perform more extensive searches than default.
-  (load-prefer-newer t) ;; Prevents stale elisp bytecode
-  (ediff-window-setup-function 'ediff-setup-windows-plain) ;; Ediff uses the existing frame
-					;(add-to-list 'project-vc-root-markers ".project" 'append)
-  (project-vc-extra-root-markers '(".project"))
-  ;; UI tweaks
-  (column-number-mode t) ; Show column as well
-  (x-underline-at-descent-line nil) ; Prettier underlines
-  (switch-to-buffer-obey-display-actions t) ; Make switching buffers more consistent
-  (show-trailing-whitespace nil) ; By default, don't underline trailing spaces
-  (indicate-buffer-boundaries 'left) ; Show buffer top and bottom in the margin
-  (display-line-numbers-width 3) ; Set a minimum width for line numbers
   ;; Disables caps sensitivity across searches
+  (completion-ignore-case t)
   (read-file-name-completion-ignore-case t)
   (read-buffer-completion-ignore-case t)
-  (completion-ignore-case t)
   ;; Hide commands in M-x which do not work in the current mode. Vertico
   ;; commands are hidden in normal buffers. This is useful beyond Vertico.
   (read-extended-command-predicate #'command-completion-default-include-p)
   ;; Do not allow the cursor in the minibuffer prompt
   (minibuffer-prompt-properties
    '(read-only t cursor-intangible t face minibuffer-prompt)))
+
+(use-package emacs
+  :ensure nil
+  :init
+  (setq inhibit-compacting-font-caches t)
+  (setq use-short-answers t)
+  (setq inhibit-startup-message t)
+  :config
+  (windmove-default-keybindings 'super)
+  (context-menu-mode t)
+  (when (display-graphic-p)
+    (context-menu-mode))
+  :custom
+  ;; Fix archaic defaults
+  (sentence-end-double-space nil)
+  (apropos-do-all t) ;; Apropos commands perform more extensive searches than default.
+  (load-prefer-newer t) ;; Prevents stale elisp bytecode
+  ;; UI tweaks
+  (switch-to-buffer-obey-display-actions t) ; Make switching buffers more consistent
+  (show-trailing-whitespace nil))
+
+;;;; TODO
+
+;; Magit
+
+;; Magit-Todos
+
+;; Magit-Delta
+
+;; Diff-hl
+
+;; Anzu

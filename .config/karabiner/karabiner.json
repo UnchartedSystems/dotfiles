@@ -5,7 +5,7 @@
             "complex_modifications": {
                 "rules": [
                     {
-                        "description": "Remap Right Option to Control + Option (passes through other modifiers like Shift, Command, etc.)",
+                        "description": "Remap Right Option to Command + Control + Option (passes through other modifiers like Shift, Command, etc.)",
                         "manipulators": [
                             {
                                 "from": {
@@ -15,7 +15,7 @@
                                 "to": [
                                     {
                                         "key_code": "left_option",
-                                        "modifiers": ["left_control"]
+                                        "modifiers": ["left_command", "left_control"]
                                     }
                                 ],
                                 "type": "basic"

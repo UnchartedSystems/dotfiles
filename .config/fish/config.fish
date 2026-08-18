@@ -7,4 +7,4 @@ function ec
 end
 
 alias dotfiles='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME'
-set -xg PATH ~/.local/bin /opt/local/bin /opt/local/sbin $PATH
+set -xg PATH ~/.local/bin /opt/local/bin /opt/local/sbin /Applications/Obsidian.app/Contents/MacOS $PATH

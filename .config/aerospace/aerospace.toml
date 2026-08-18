@@ -73,10 +73,21 @@ outer.right =      0
 
 ### Custom Keybinds
 
-cmd-ctrl-alt-b = 'exec-and-forget sh -c "osascript -e \"tell application \\\"Safari\\\" to make new document\" && osascript -e \"tell application \\\"Safari\\\" to activate\""'
+# Helium
+cmd-ctrl-alt-b = '''exec-and-forget osascript -e '
+tell application "Helium"
+    make new window
+    activate
+end tell'
+'''
 
+# Obsidian
+cmd-ctrl-alt-n = 'exec-and-forget /usr/local/bin/obsidian vault="Life" command id=workspace:new-window'
+
+# Ghostty
 cmd-ctrl-alt-t = 'exec-and-forget open -n /Applications/Ghostty.app'
 
+# Emacs
 cmd-ctrl-alt-g = 'exec-and-forget /opt/local/bin/fish -c "ec"'
 
 # All possible commands: https://nikitabobko.github.io/AeroSpace/commands
@@ -109,7 +120,7 @@ cmd-ctrl-alt-down = 'focus down --boundaries-action wrap-around-the-workspace'
 cmd-ctrl-alt-up = 'focus up --boundaries-action wrap-around-the-workspace'
 cmd-ctrl-alt-right = 'focus right --boundaries-action wrap-around-the-workspace'
 
-cmd-ctrl-alt-n = 'focus dfs-next --boundaries-action wrap-around-the-workspace'
+cmd-ctrl-alt-semicolon = 'focus dfs-next --boundaries-action wrap-around-the-workspace'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#join-with
 #cmd-ctrl-alt-y = 'join-with left'
@@ -174,7 +185,7 @@ cmd-ctrl-alt-tab = 'focus-monitor --wrap-around next'
 cmd-ctrl-alt-shift-tab = 'move-node-to-monitor --wrap-around next'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#mode
-cmd-ctrl-alt-shift-semicolon = 'mode service'
+cmd-ctrl-alt-shift-backslash = 'mode service'
 
 # 'service' binding mode declaration.
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes

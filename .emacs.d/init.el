@@ -213,8 +213,7 @@
   :ensure nil)
 
 ;; Terminal
-(use-package eat
-  :defer t)
+(use-package vterm)
 
 ;; Clojure
 
@@ -519,10 +518,9 @@
       ("A" cljr-add-require-to-ns)
       ("N" cljr-clean-ns))
 
-        (my/defleader-prefix "dev"
+    (my/defleader-prefix "dev"
       ("i" consult-imenu)
       ("o" consult-outline)
-      ("t" eat-project)
       ("j" majutsu)
       ("J" majutsu-log)
       ("e" :prefix "eglot")
@@ -560,8 +558,8 @@
       ("f" consult-buffer-other-frame))
 
     (my/defleader-prefix "tools"
-      ("t" eat-project)
-      ("T" eat))
+      ("t" vterm)
+      )
 
     (my/defleader-prefix "project"
       ("p" project-switch-project)
